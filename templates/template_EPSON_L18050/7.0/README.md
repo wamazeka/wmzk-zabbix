@@ -12,8 +12,6 @@ All counter values were cross-checked against the printer's built-in web interfa
 | Field | Value |
 |-------|-------|
 | Model | Epson L18050 (EcoTank A3+ inkjet) |
-| Tested firmware | `2025-04-04` |
-| Host | `epson.local` / `10.100.113.68` |
 | Template file | `zbx_template_epson_l18050.yaml` |
 | Zabbix version | 7.4+ |
 | SNMP version | v3 (authPriv, SHA + AES) |
