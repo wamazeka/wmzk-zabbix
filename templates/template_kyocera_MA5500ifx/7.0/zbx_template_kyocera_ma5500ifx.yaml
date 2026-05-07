@@ -1,0 +1,853 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+  - uuid: 52d85359832240b480bfe17ca1ae6328
+    name: Templates/Printers
+  templates:
+  - uuid: 55a0e1b758b4411f9909c6b7eb41c674
+    template: Kyocera ECOSYS MA5500ifx SNMPv3
+    name: Kyocera ECOSYS MA5500ifx SNMPv3
+    description: 'Monitoring template for Kyocera ECOSYS MA5500ifx MFU via SNMPv3.
+
+
+      Covers:
+
+      - Printer/scanner/fax status and error states
+
+      - Toner level (TK-3430S) in percent via standard Printer MIB
+
+      - Waste toner box status
+
+      - Imaging unit and document processor status
+
+      - Paper tray levels (MP Tray, Cassette 1)
+
+      - Print counters: total, by function (print/copy/fax), by duplex
+
+      - Scan pages lifetime counter
+
+      - CPU model, RAM total/free/used
+
+      - System uptime, MAC, IP, firmware, serial number
+
+
+      MIBs used:
+
+      - Standard Printer MIB (RFC 3805): 1.3.6.1.2.1.43.*
+
+      - HOST-RESOURCES-MIB: 1.3.6.1.2.1.25.*
+
+      - Kyocera private MIB: 1.3.6.1.4.1.1347.*
+
+
+      Tested on: Kyocera ECOSYS MA5500ifx, firmware C0V_S000.005.054
+
+      Vendor OID: 1.3.6.1.4.1.1347.41
+
+      '
+    groups:
+    - name: Templates/Printers
+    macros:
+    - macro: '{$SNMP_USER}'
+      value: zabbixUser
+      description: SNMPv3 username
+    - macro: '{$SNMP_AUTH_PASS}'
+      value: ''
+      type: SECRET_TEXT
+      description: SNMPv3 authentication password (SHA)
+    - macro: '{$SNMP_PRIV_PASS}'
+      value: ''
+      type: SECRET_TEXT
+      description: SNMPv3 privacy password (AES)
+    - macro: '{$TONER_LOW_WARN}'
+      value: '20'
+      description: Toner level warning threshold (%)
+    - macro: '{$TONER_LOW_CRIT}'
+      value: '10'
+      description: Toner level critical threshold (%)
+    - macro: '{$PAPER_LOW_WARN}'
+      value: '20'
+      description: Paper level warning threshold (%)
+    items:
+    - uuid: 5c7f05ccce8f4cd0af6cbf8bba78415c
+      name: Model Name
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.43.5.1.1.16.1
+      key: printer.model
+      delay: 1h
+      history: 7d
+      trends: '0'
+      value_type: CHAR
+      description: Printer model name (prtGeneralPrinterName, Printer MIB)
+      tags:
+      - tag: component
+        value: system
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+    - uuid: 2bae5a701c7a4c7ab07c78ef86619625
+      name: Serial Number
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.43.5.1.1.17.1
+      key: printer.serial
+      delay: 1h
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: Printer serial number (prtGeneralSerialNumber, Printer MIB)
+      tags:
+      - tag: component
+        value: system
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+    - uuid: 87a30332dbf74be7a8b58395e1cc74e1
+      name: Firmware Version (Main)
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1347.43.5.4.1.5.1.1
+      key: printer.firmware.main
+      delay: 1h
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: Main firmware version string (Kyocera private MIB 1347.43.5.4)
+      tags:
+      - tag: component
+        value: system
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      triggers:
+      - uuid: ec16afb0458e4d62a3a9eca16a7b0ba6
+        expression: change(/Kyocera ECOSYS MA5500ifx SNMPv3/printer.firmware.main)=1
+        name: 'Firmware version changed (new: {ITEM.LASTVALUE})'
+        priority: INFO
+        description: Main firmware has been updated. Verify the new version is expected.
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: system
+    - uuid: 4c4f540891b24baf8125d2875a783165
+      name: System Uptime
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.1.3.0
+      key: printer.uptime
+      delay: 10m
+      history: 30d
+      trends: 90d
+      units: uptime
+      description: Time since the device last (re)started (sysUpTime)
+      tags:
+      - tag: component
+        value: system
+      preprocessing:
+      - type: MULTIPLIER
+        parameters:
+        - '0.01'
+      triggers:
+      - uuid: 062e177e09654a2988d9b3ddbee20b6c
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/printer.uptime)<600
+        name: Device has been restarted (uptime < 10 min)
+        priority: WARNING
+        description: Device uptime is less than 10 minutes — likely rebooted recently.
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: 6331832564de4e65863ec156bd19c532
+      name: IP Address
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.4.20.1.1.10.100.113.51
+      key: net.if.ip
+      delay: 10m
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: Current IP address of the device (ipAdEntAddr, IP-MIB)
+      tags:
+      - tag: component
+        value: network
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1h
+      triggers:
+      - uuid: e41e56f5838a44b9a63f2fc25a4a21d0
+        expression: change(/Kyocera ECOSYS MA5500ifx SNMPv3/net.if.ip)=1
+        name: 'IP address changed (new: {ITEM.LASTVALUE})'
+        priority: WARNING
+        description: Device IP address has changed. Update DNS/DHCP records if needed.
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: network
+    - uuid: ca238cb549914b30a1a5383f32165861
+      name: MAC Address
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.2.2.1.6.1
+      key: net.if.mac
+      delay: 1h
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: MAC address of the network interface (ifPhysAddress, IF-MIB)
+      tags:
+      - tag: component
+        value: network
+      preprocessing:
+      - type: JAVASCRIPT
+        parameters:
+        - return value.trim().split(' ').join(':');
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      triggers:
+      - uuid: f271503c0d81405eb361be93996cadc2
+        expression: change(/Kyocera ECOSYS MA5500ifx SNMPv3/net.if.mac)=1
+        name: 'MAC address changed (new: {ITEM.LASTVALUE})'
+        priority: HIGH
+        description: Network interface MAC address has changed unexpectedly.
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: security
+    - uuid: 4282de6e465643edb619e4c0729f4b8d
+      name: Printer Status
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.25.3.5.1.1.1
+      key: printer.status
+      delay: 1m
+      history: 30d
+      trends: 90d
+      description: 'hrPrinterStatus (HOST-RESOURCES-MIB):
+
+        1=other, 2=unknown, 3=idle, 4=printing, 5=warmup
+
+        '
+      valuemap:
+        name: hrPrinterStatus
+      tags:
+      - tag: component
+        value: status
+      triggers:
+      - uuid: fda30b0bda0e44b7b99fbd2018e41e30
+        expression: nodata(/Kyocera ECOSYS MA5500ifx SNMPv3/printer.status,10m)=1
+        name: Device is not responding via SNMP
+        priority: AVERAGE
+        description: No SNMP data received for 10 minutes. Device may be offline or powered off.
+        tags:
+        - tag: scope
+          value: availability
+      - uuid: b73704747b564aa5a91e9f393008d472
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/printer.status)=1 or last(/Kyocera ECOSYS MA5500ifx SNMPv3/printer.status)=2
+        name: Printer status unknown
+        priority: WARNING
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: 62608b05c3124ab78584a36fcae5224f
+      name: Printer Error State
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.25.3.5.1.2.1
+      key: printer.error.state
+      delay: 1m
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: 'hrPrinterDetectedErrorState bitmap decoded to human-readable string.
+
+        Returns "OK" when no errors are present.
+
+        '
+      tags:
+      - tag: component
+        value: status
+      preprocessing:
+      - type: JAVASCRIPT
+        parameters:
+        - 'var bytes = value.trim().split('' '');
+
+          var b = parseInt(bytes[0], 16);
+
+          if (isNaN(b) || b === 0) return "OK";
+
+          var errors = [];
+
+          if (b & 0x80) errors.push("Low Paper");
+
+          if (b & 0x40) errors.push("No Paper");
+
+          if (b & 0x20) errors.push("Low Toner");
+
+          if (b & 0x10) errors.push("No Toner");
+
+          if (b & 0x08) errors.push("Door Open");
+
+          if (b & 0x04) errors.push("Paper Jam");
+
+          if (b & 0x02) errors.push("Offline");
+
+          if (b & 0x01) errors.push("Service Required");
+
+          return errors.join(", ");
+
+          '
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 6h
+      triggers:
+      - uuid: 0a308f9b346b4ba7bbf9f741346e797d
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/printer.error.state)<>"OK"
+        name: 'Printer error: {ITEM.LASTVALUE}'
+        priority: HIGH
+        description: Printer has reported one or more errors via hrPrinterDetectedErrorState.
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: e22452c980df43f1a8517476e6e84ee6
+      name: 'Toner TK-3430S: Level (raw)'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.43.11.1.1.9.1.1
+      key: toner.black.raw
+      delay: 15m
+      history: 90d
+      trends: 365d
+      description: 'Raw toner level (prtMarkerSuppliesLevel, Printer MIB).
+
+        Max = 10000. Converted to % by dependent item.
+
+        '
+      tags:
+      - tag: component
+        value: toner
+    - uuid: 7a4eed2be58a43609e11662c1e80215d
+      name: 'Toner TK-3430S: Level (%)'
+      type: DEPENDENT
+      key: toner.black.pct
+      master_item:
+        key: toner.black.raw
+      delay: '0'
+      history: 90d
+      trends: 365d
+      units: '%'
+      description: 'Black toner (TK-3430S) remaining level in percent.
+
+        Formula: round(raw / 10000 * 100)
+
+        Source: prtMarkerSuppliesLevel / prtMarkerSuppliesMaxCapacity (43.11)
+
+        '
+      tags:
+      - tag: component
+        value: toner
+      preprocessing:
+      - type: JAVASCRIPT
+        parameters:
+        - return Math.round(value / 10000 * 100);
+      triggers:
+      - uuid: 92f99b79402b458baa63f835f8766891
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/toner.black.pct)<={$TONER_LOW_WARN} and last(/Kyocera ECOSYS MA5500ifx
+          SNMPv3/toner.black.pct)>{$TONER_LOW_CRIT}
+        name: Toner level low ({ITEM.LASTVALUE})
+        priority: WARNING
+        description: Toner TK-3430S is below warning threshold. Order replacement toner.
+        tags:
+        - tag: scope
+          value: capacity
+      - uuid: e78082592f3e43c6b8a43f6b1d991f97
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/toner.black.pct)<={$TONER_LOW_CRIT}
+        name: Toner critically low ({ITEM.LASTVALUE})
+        priority: HIGH
+        description: Toner TK-3430S is critically low. Replace immediately to avoid print failure.
+        tags:
+        - tag: scope
+          value: capacity
+    - uuid: 8ea63122ef7241ed83c4d85d73f187df
+      name: 'Waste Toner Box: Status'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.43.11.1.1.9.1.2
+      key: toner.waste.status
+      delay: 15m
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: 'Waste toner box status (prtMarkerSuppliesLevel index 2).
+
+        -3 = OK (not full), other values indicate replacement needed.
+
+        '
+      tags:
+      - tag: component
+        value: toner
+      preprocessing:
+      - type: JAVASCRIPT
+        parameters:
+        - 'var v = parseInt(value);
+
+          if (v === -3) return "OK";
+
+          if (v === -2) return "Unknown";
+
+          if (v === 0) return "Full - Replace";
+
+          return "Level: " + v;
+
+          '
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 6h
+      triggers:
+      - uuid: 91e4f19c23ec40b9b21b52412c092128
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/toner.waste.status)<>"OK" and last(/Kyocera ECOSYS MA5500ifx SNMPv3/toner.waste.status)<>"Unknown"
+        name: Waste toner box needs replacement ({ITEM.LASTVALUE})
+        priority: HIGH
+        description: Waste toner box is full. Replace to avoid printer lockout.
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: capacity
+    - uuid: 98fffb54ae404e1f87f67c477f84234b
+      name: 'Imaging Unit: Status'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1347.43.24.1.1.5.1
+      key: imaging.unit.status
+      delay: 15m
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: 'Imaging unit status (Kyocera private MIB 1347.43.24).
+
+        128 (0x80) = Normal/OK.
+
+        Other values indicate warning or replacement needed.
+
+        '
+      tags:
+      - tag: component
+        value: supplies
+      preprocessing:
+      - type: JAVASCRIPT
+        parameters:
+        - 'var v = parseInt(value);
+
+          if (v === 128) return "OK";
+
+          if (v === 0) return "Replace";
+
+          if (v === 64) return "Near End";
+
+          return "Status: " + v;
+
+          '
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 6h
+      triggers:
+      - uuid: 516dcece0e5d4ef9a008af84897abc43
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/imaging.unit.status)<>"OK"
+        name: Imaging unit requires attention ({ITEM.LASTVALUE})
+        priority: WARNING
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: capacity
+    - uuid: 355cd1d729ce4740b45b6550f380ac0d
+      name: 'Document Processor: Status'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1347.43.24.1.1.5.2
+      key: doc.processor.status
+      delay: 15m
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: 'Document processor (ADF) status (Kyocera private MIB 1347.43.24).
+
+        1 = OK, other values indicate issue.
+
+        '
+      tags:
+      - tag: component
+        value: supplies
+      preprocessing:
+      - type: JAVASCRIPT
+        parameters:
+        - 'var v = parseInt(value);
+
+          if (v === 1) return "OK";
+
+          if (v === 0) return "Replace";
+
+          return "Status: " + v;
+
+          '
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 6h
+    - uuid: bc71b2490ba04a8aa71750722bdb25ba
+      name: 'Paper: Cassette 1 Level (raw)'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.43.8.2.1.10.1.2
+      key: paper.cassette1.raw
+      delay: 5m
+      history: 30d
+      trends: 90d
+      description: Cassette 1 current paper level in sheets (prtInputCurrentLevel, Printer MIB). Max=500. Used by dependent
+        item for % calculation.
+      tags:
+      - tag: component
+        value: paper
+      preprocessing:
+      - type: JAVASCRIPT
+        parameters:
+        - 'var v = parseInt(value);
+
+          if (isNaN(v) || v < 0) return 0;
+
+          return v;'
+    - uuid: 5d44c1a7bc944442987bad7ad1a9a2b8
+      name: 'Paper: MP Tray Status (raw)'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.43.8.2.1.11.1.1
+      key: paper.mptray.raw
+      delay: 5m
+      history: 30d
+      trends: 90d
+      description: MP Tray paper status (prtInputStatus). 0=paper present, 19=empty. MP Tray does not measure sheet count
+        — only presence/absence.
+      tags:
+      - tag: component
+        value: paper
+    - uuid: 94ba3654584c44b5b405aaab1989e956
+      name: CPU Model
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1347.43.5.4.1.2.1.1
+      key: system.cpu.model
+      delay: 1h
+      history: 7d
+      trends: '0'
+      value_type: CHAR
+      description: CPU model name (Kyocera private MIB 1347.43.5.4)
+      tags:
+      - tag: component
+        value: system
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+    - uuid: 9a4af3055d0843b2a42c3222152d6ac8
+      name: CPU Frequency
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1347.43.5.4.1.3.1.1
+      key: system.cpu.freq
+      delay: 1h
+      history: 7d
+      trends: '0'
+      description: CPU clock frequency in MHz (Kyocera private MIB 1347.43.5.4). Value is in MHz — displayed without units
+        to avoid Zabbix SI auto-scaling.
+      tags:
+      - tag: component
+        value: system
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+    - uuid: 6a000d10f76e4549a7822076414660e0
+      name: RAM Total
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1347.43.5.1.1.4.1
+      key: system.ram.total
+      delay: 1h
+      history: 7d
+      trends: '0'
+      units: B
+      description: Total physical RAM in bytes (Kyocera private MIB 1347.43.5, value in KB)
+      tags:
+      - tag: component
+        value: system
+      preprocessing:
+      - type: MULTIPLIER
+        parameters:
+        - '1024'
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+    - uuid: 787d11841b6a4e1d82b21c28649f9c28
+      name: RAM Free
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1347.43.5.1.1.10.1
+      key: system.ram.free
+      delay: 5m
+      history: 30d
+      trends: 90d
+      units: B
+      description: Free physical RAM in bytes (Kyocera private MIB 1347.43.5, value in KB)
+      tags:
+      - tag: component
+        value: system
+      preprocessing:
+      - type: MULTIPLIER
+        parameters:
+        - '1024'
+    - uuid: 4e798f7a7abf49fca20d350070563af7
+      name: RAM Used
+      type: CALCULATED
+      key: system.ram.used
+      delay: 5m
+      history: 30d
+      trends: 90d
+      units: B
+      params: last(//system.ram.total)-last(//system.ram.free)
+      description: 'Used physical RAM in bytes (computed: total - free)'
+      tags:
+      - tag: component
+        value: system
+    - uuid: 7ce8c8c07f394dd2a4d5b7d40a7434e2
+      name: Total Pages Printed
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.43.10.2.1.4.1.1
+      key: print.pages.total
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      description: Total lifetime page counter (prtMarkerLifeCount, Printer MIB RFC 3805)
+      tags:
+      - tag: component
+        value: counters
+    - uuid: b42d5e80709c49fa87246c0f96935d8e
+      name: 'Pages Printed: B&W (Print)'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1347.42.3.1.1.1.1.1
+      key: print.pages.bw.print
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      description: Total B&W pages printed from computer (Kyocera private MIB 1347.42.3)
+      tags:
+      - tag: component
+        value: counters
+    - uuid: e0f41273971f4685a34584f50a91b7f1
+      name: 'Pages Printed: B&W (Copy)'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1347.42.3.1.1.1.1.2
+      key: print.pages.bw.copy
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      description: Total B&W pages printed via copy function (Kyocera private MIB 1347.42.3)
+      tags:
+      - tag: component
+        value: counters
+    - uuid: 7ff433ab98414d2494b2b2667755269f
+      name: 'Pages Printed: B&W (FAX)'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1347.42.3.1.1.1.1.3
+      key: print.pages.bw.fax
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      description: Total B&W pages printed via FAX function (Kyocera private MIB 1347.42.3)
+      tags:
+      - tag: component
+        value: counters
+    - uuid: 923f85bac2f44c8fa3fba32ebb0de39f
+      name: 'Pages: B&W Total'
+      type: CALCULATED
+      key: print.pages.bw.total
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      params: last(//print.pages.bw.print)+last(//print.pages.bw.copy)+last(//print.pages.bw.fax)
+      description: Total B&W pages across all functions (print + copy + fax)
+      tags:
+      - tag: component
+        value: counters
+    - uuid: 2462c6d42e0c4e74b93639c18c216ab2
+      name: 'Pages: 2-Sided (Duplex) Total'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1347.42.2.5.1.1.2.1
+      key: print.pages.duplex.total
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      description: 'Total 2-sided (duplex) pages printed (Kyocera private MIB 1347.42.2.5). Confirmed: 50 ✅'
+      tags:
+      - tag: component
+        value: counters
+    - uuid: 5a6b3d45e8904d2faaa062fc2ef93b13
+      name: 'Pages: 1-Sided (Simplex) Total'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1347.42.2.5.1.1.1.1
+      key: print.pages.simplex.total
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      description: 'Total 1-sided (simplex) pages printed (Kyocera private MIB 1347.42.2.5). Confirmed: 78 ✅'
+      tags:
+      - tag: component
+        value: counters
+    - uuid: feb5fe8b6d94448b86fe3d79fe4447cf
+      name: 'Pages: A4 Printed'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1347.42.3.1.6.1.1.1.1
+      key: print.pages.a4
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      description: Total pages printed on A4 paper (Kyocera private MIB 1347.42.3, by size index 1)
+      tags:
+      - tag: component
+        value: counters
+    - uuid: e8e46433f43946328423ef56c3f28dbf
+      name: 'Scanned Pages: Total'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1347.46.10.1.1.5.3
+      key: scan.pages.total
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      description: 'Total scanned pages (Kyocera scanner MIB 1347.46.10). Confirmed: 14 ✅'
+      tags:
+      - tag: component
+        value: counters
+    - uuid: d57fb660a59a42de89117ae4ec2fdeee
+      name: First Use Date
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1347.42.2.6.3.0.0
+      key: printer.first.use.date
+      delay: 1h
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: Date and time of first device use (Kyocera private MIB 1347.42.2.6)
+      tags:
+      - tag: component
+        value: counters
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+    - uuid: 1f37dae7f1954d6482833605b213f0b3
+      name: 'Paper: Cassette 1 Level (%)'
+      type: DEPENDENT
+      key: paper.cassette1.pct
+      delay: '0'
+      history: 30d
+      trends: 90d
+      units: '%'
+      description: Cassette 1 paper level in percent. Max=500 sheets. Returns 0 when empty.
+      tags:
+      - tag: component
+        value: paper
+      triggers:
+      - uuid: 9853a25301e14a7a86ccce1c7477b22d
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/paper.cassette1.pct)<={$PAPER_LOW_WARN}
+        name: 'Cassette 1: paper low ({ITEM.LASTVALUE})'
+        priority: WARNING
+        tags:
+        - tag: scope
+          value: capacity
+      - uuid: 558ec9c134374296b535081a11978068
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/paper.cassette1.pct)=0
+        name: 'Cassette 1: paper empty'
+        priority: AVERAGE
+        tags:
+        - tag: scope
+          value: capacity
+      master_item:
+        key: paper.cassette1.raw
+      preprocessing:
+      - type: JAVASCRIPT
+        parameters:
+        - 'var v = parseInt(value);
+
+          if (isNaN(v) || v <= 0) return 0;
+
+          return Math.round(v / 500 * 100);'
+    - uuid: edf4a9302b7442c284ae0c85afbf1eb4
+      name: 'Paper: MP Tray Status'
+      type: DEPENDENT
+      key: paper.mptray.status
+      delay: '0'
+      history: 30d
+      trends: '0'
+      description: MP Tray paper presence status. MP Tray cannot measure sheet count — only detects paper present or absent.
+      tags:
+      - tag: component
+        value: paper
+      master_item:
+        key: paper.mptray.raw
+      preprocessing:
+      - type: JAVASCRIPT
+        parameters:
+        - 'var v = parseInt(value);
+
+          if (v === 0) return "Paper present";
+
+          if (v === 19) return "Empty";
+
+          return "Unknown (" + v + ")";'
+      value_type: CHAR
+      triggers:
+      - uuid: a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/paper.mptray.status)="Empty"
+        name: 'MP Tray: no paper'
+        priority: INFO
+        tags:
+        - tag: scope
+          value: capacity
+    - uuid: 7c411021a62a46028bcc7e161b81daa1
+      name: 'Scanned Pages: Copy'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1347.46.10.1.1.7.3
+      key: scan.pages.other
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      description: 'Scanned pages via Other/Direct function (Kyocera scanner MIB 1347.46.10). Note: Copy scan count = Total
+        - Other - FAX.'
+      tags:
+      - tag: component
+        value: counters
+    valuemaps:
+    - uuid: 11cfbaddf4474c49bdab14f4228beacd
+      name: hrPrinterStatus
+      mappings:
+      - value: '1'
+        newvalue: Other
+      - value: '2'
+        newvalue: Unknown
+      - value: '3'
+        newvalue: Idle
+      - value: '4'
+        newvalue: Printing
+      - value: '5'
+        newvalue: Warmup
+    - uuid: 5c4c0bd6cc3c4e91a382e82db65d3924
+      name: kyoceraPaperLevel
+      mappings:
+      - value: '1'
+        newvalue: Full
+      - value: '2'
+        newvalue: High
+      - value: '3'
+        newvalue: Medium
+      - value: '4'
+        newvalue: Low
+      - value: '5'
+        newvalue: Empty
+      - value: '19'
+        newvalue: No Paper

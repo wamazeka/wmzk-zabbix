@@ -1,0 +1,699 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+  - uuid: 0c6c962430bb4fc8a69fea285f049068
+    name: Templates/Printers
+  templates:
+  - uuid: b5dfb560f10b4ab0a9bbe723511bc2cd
+    template: EPSON L18050 SNMPv3
+    name: EPSON L18050 SNMPv3
+    description: "Monitoring template for EPSON L18050 Series inkjet printer via SNMPv3.\n\nInk levels are read from Epson\
+      \ private MIB 1.3.6.1.4.1.1248.1.8.2.14.7\nand reported individually per color (Black, Cyan, Magenta, Yellow,\nLight\
+      \ Cyan, Light Magenta) on a 0-97 scale converted to percent.\n\nRequired macros:\n  {$SNMP_USER}      - SNMPv3 username\n\
+      \  {$SNMP_AUTH_PASS} - authentication password (SHA)\n  {$SNMP_PRIV_PASS} - privacy password (AES)\n  {$SNMP_CONTEXT}\
+      \   - SNMP context name (e.g. EPSONSN)\n  {$INK_LOW_WARN}   - ink low warning threshold %, default 20\n  {$INK_LOW_CRIT}\
+      \   - ink critical threshold %, default 10\n\nTested on: EPSON L18050 Series, firmware TP31OA\nMIB vendor OID: 1.3.6.1.4.1.1248\
+      \ (Seiko Epson Corporation)\n"
+    groups:
+    - name: Templates/Printers
+    macros:
+    - macro: '{$SNMP_USER}'
+      value: zabbix
+      description: SNMPv3 username
+    - macro: '{$SNMP_AUTH_PASS}'
+      value: ''
+      type: SECRET_TEXT
+      description: SNMPv3 authentication password (SHA)
+    - macro: '{$SNMP_PRIV_PASS}'
+      value: ''
+      type: SECRET_TEXT
+      description: SNMPv3 privacy password (AES)
+    - macro: '{$SNMP_CONTEXT}'
+      value: EPSONSN
+      description: SNMPv3 context name (required for this printer)
+    - macro: '{$INK_LOW_WARN}'
+      value: '20'
+      description: Ink level warning threshold (%)
+    - macro: '{$INK_LOW_CRIT}'
+      value: '10'
+      description: Ink level critical threshold (%)
+    - macro: '{$MAINT_LOW_WARN}'
+      value: '20'
+      description: Maintenance cartridge warning threshold (% remaining)
+    - macro: '{$MAINT_LOW_CRIT}'
+      value: '10'
+      description: Maintenance cartridge critical threshold (% remaining)
+    items:
+    - uuid: 233f5c94c9094ff2b4134ff72c457641
+      name: Printer Model Name
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.43.5.1.1.16.1
+      key: printer.model
+      delay: 1h
+      history: 7d
+      trends: '0'
+      value_type: CHAR
+      description: Printer model name (prtGeneralPrinterName, Printer MIB)
+      tags:
+      - tag: component
+        value: system
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+    - uuid: a23f61dafccc4f97a26417cbc4d63baf
+      name: Serial Number
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.2.1.1.2.1.2
+      key: printer.serial
+      delay: 1h
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: Printer serial number (Epson private MIB)
+      tags:
+      - tag: component
+        value: system
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+    - uuid: 643ebcb048094223aa61a3278956b2f4
+      name: Firmware Version
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.2.1.1.2.1.1
+      key: printer.firmware
+      delay: 1h
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: Main firmware version string (Epson private MIB)
+      tags:
+      - tag: component
+        value: system
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      triggers:
+      - uuid: 2b07d3b7dde64cdfbfa7b6f631e81cd7
+        expression: change(/EPSON L18050 SNMPv3/printer.firmware)=1
+        name: 'Firmware version changed (new: {ITEM.LASTVALUE})'
+        priority: INFO
+        description: Printer firmware has been updated. Verify the new version is expected.
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: system
+    - uuid: 0a47c45ee3ec473fa42921e4ad5f46cb
+      name: System Uptime
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.1.3.0
+      key: printer.uptime
+      delay: 10m
+      history: 30d
+      trends: 90d
+      units: uptime
+      description: Time since the printer network interface last (re)started (sysUpTime)
+      tags:
+      - tag: component
+        value: system
+      preprocessing:
+      - type: MULTIPLIER
+        parameters:
+        - '0.01'
+      triggers:
+      - uuid: 6caa5acc573c4483b783dea8a3c91deb
+        expression: last(/EPSON L18050 SNMPv3/printer.uptime)<600
+        name: Printer has been restarted (uptime < 10 min)
+        priority: WARNING
+        description: Printer uptime is less than 10 minutes — likely rebooted recently.
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: 5a723be3b93548858a8ac7e14b9d3839
+      name: Printer Status
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.25.3.5.1.1.1
+      key: printer.status
+      delay: 1m
+      history: 30d
+      trends: 90d
+      description: 'hrPrinterStatus (HOST-RESOURCES-MIB):
+
+        1=other, 2=unknown, 3=idle, 4=printing, 5=warmup
+
+        '
+      valuemap:
+        name: hrPrinterStatus
+      tags:
+      - tag: component
+        value: status
+      triggers:
+      - uuid: cbdfea3955ec44f592e7ecbe97b31071
+        expression: nodata(/EPSON L18050 SNMPv3/printer.status,10m)=1
+        name: Printer is not responding via SNMP
+        priority: AVERAGE
+        description: No SNMP data received for 10 minutes. Printer may be offline or powered off.
+        tags:
+        - tag: scope
+          value: availability
+      - uuid: e5e71639e95d4b6d86012122118a7013
+        expression: last(/EPSON L18050 SNMPv3/printer.status)=1 or last(/EPSON L18050 SNMPv3/printer.status)=2
+        name: Printer status unknown
+        priority: WARNING
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: e8be538ebe664afa9169225e051d6754
+      name: Printer Error State
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.25.3.5.1.2.1
+      key: printer.error.state
+      delay: 1m
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: 'hrPrinterDetectedErrorState bitmap decoded to human-readable string.
+
+        Returns "OK" when no errors are present.
+
+        '
+      tags:
+      - tag: component
+        value: status
+      preprocessing:
+      - type: JAVASCRIPT
+        parameters:
+        - 'var bytes = value.trim().split('' '');
+
+          var b = parseInt(bytes[0], 16);
+
+          if (isNaN(b) || b === 0) return "OK";
+
+          var errors = [];
+
+          if (b & 0x80) errors.push("Low Paper");
+
+          if (b & 0x40) errors.push("No Paper");
+
+          if (b & 0x20) errors.push("Low Ink");
+
+          if (b & 0x10) errors.push("No Ink");
+
+          if (b & 0x08) errors.push("Door Open");
+
+          if (b & 0x04) errors.push("Paper Jam");
+
+          if (b & 0x02) errors.push("Offline");
+
+          if (b & 0x01) errors.push("Service Required");
+
+          return errors.join(", ");
+
+          '
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 6h
+      triggers:
+      - uuid: 2e155dce540f41ec88699fe685b30fdb
+        expression: last(/EPSON L18050 SNMPv3/printer.error.state)<>"OK"
+        name: 'Printer error: {ITEM.LASTVALUE}'
+        priority: HIGH
+        description: Printer reported one or more errors via hrPrinterDetectedErrorState.
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: c9c97172f34d450c8cd0496d35cf4547
+      name: Total Pages Printed
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.43.10.2.1.4.1.1
+      key: print.pages.total
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      description: Total lifetime page counter (prtMarkerLifeCount, Printer MIB RFC 3805)
+      tags:
+      - tag: component
+        value: counters
+    - uuid: 64d75c21573540adb96617b5f0755b33
+      name: Total B&W Pages Printed
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.27.1.1.3.1.1
+      key: print.pages.bw
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      description: Total black-and-white pages printed (Epson private MIB)
+      tags:
+      - tag: component
+        value: counters
+    - uuid: f1b1715974c4456a986c4b27bacaa550
+      name: Total Color Pages Printed
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.27.1.1.4.1.1
+      key: print.pages.color
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      description: Total color pages printed (Epson private MIB)
+      tags:
+      - tag: component
+        value: counters
+    - uuid: 2565604185d546eb9ab8cbae89ae50be
+      name: Network Interface MAC Address
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.2.2.1.6.1
+      key: net.if.mac
+      delay: 1h
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: MAC address of the network interface (ifPhysAddress, IF-MIB)
+      tags:
+      - tag: component
+        value: network
+      preprocessing:
+      - type: JAVASCRIPT
+        parameters:
+        - 'return value.trim().split(" ").map(function(b){return b}).join(":");
+
+          '
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      triggers:
+      - uuid: e7af19f42be34c02a99fc166a8ac67f1
+        expression: change(/EPSON L18050 SNMPv3/net.if.mac)=1
+        name: 'MAC address changed (new: {ITEM.LASTVALUE})'
+        priority: HIGH
+        description: Network interface MAC address has changed unexpectedly.
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: security
+    - uuid: 72074051d853471dac95ee41235ad474
+      name: IP Address
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.4.20.1.1.10.100.113.68
+      key: net.if.ip
+      delay: 10m
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: Current IP address of the printer (ipAdEntAddr, IP-MIB)
+      tags:
+      - tag: component
+        value: network
+      preprocessing:
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1h
+      triggers:
+      - uuid: dc6db062c59c4318a8f96be73ce376e3
+        expression: change(/EPSON L18050 SNMPv3/net.if.ip)=1
+        name: 'IP address changed (new: {ITEM.LASTVALUE})'
+        priority: WARNING
+        description: Printer IP address has changed. Update DNS/DHCP records if needed.
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: network
+    - uuid: 1d2f3997cfec471c9209155db0b6fa4f
+      name: Total RAM
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.25.2.2.0
+      key: system.ram.total
+      delay: 1h
+      history: 7d
+      trends: '0'
+      units: B
+      description: Total physical memory installed (hrMemorySize, HOST-RESOURCES-MIB). Value in KB, converted to bytes.
+      tags:
+      - tag: component
+        value: system
+      preprocessing:
+      - type: MULTIPLIER
+        parameters:
+        - '1024'
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+    - uuid: 0958533424e947d994e6e1798f5107da
+      name: Running Processes
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.2.1.25.1.6.0
+      key: system.processes
+      delay: 5m
+      history: 30d
+      trends: 90d
+      description: Number of process contexts currently loaded (hrSystemProcesses, HOST-RESOURCES-MIB)
+      tags:
+      - tag: component
+        value: system
+    - uuid: 15cd76032e654f6780c656fb8e6dbed5
+      name: 'Pages by Size: A3 Total'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.6.1.1.4.1.1
+      key: print.pages.a3.total
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Total pages printed on A3/Ledger paper (BW+Color)
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: e7764b4a14d946d2bbae4d52bdd8f019
+      name: 'Pages by Size: A3 Color'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.6.1.1.5.1.1
+      key: print.pages.a3.color
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Color pages printed on A3/Ledger paper
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: 715e2c28ff7240dbb2cee9634532c703
+      name: 'Pages by Size: A3 B&W'
+      type: CALCULATED
+      key: print.pages.a3.bw
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      params: last(//print.pages.a3.total)-last(//print.pages.a3.color)
+      description: 'B&W pages printed on A3 (computed: total - color)'
+      tags:
+      - tag: component
+        value: counters
+    - uuid: 29eac012c93947cdb5c9b26d70359f0c
+      name: 'Pages by Size: A4 Total'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.6.1.1.4.1.2
+      key: print.pages.a4.total
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Total pages printed on A4/Letter paper (BW+Color)
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: 9a15fae77ea54c369e483d3aefe01da2
+      name: 'Pages by Size: A4 Color'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.6.1.1.5.1.2
+      key: print.pages.a4.color
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Color pages printed on A4/Letter paper
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: ee9085df54e94939a727ea17eb932eff
+      name: 'Pages by Size: A5 Total'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.6.1.1.4.1.3
+      key: print.pages.a5.total
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Total pages printed on A5 paper
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: 32bba253819344a8aa0a31ff0770cad2
+      name: 'Pages by Size: A6 Total'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.6.1.1.4.1.4
+      key: print.pages.a6.total
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Total pages printed on A6/HAGAKI paper
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: bc9cc4ef35cd4d12b10ae0d9dfa90427
+      name: 'Pages by Size: B4 Total'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.6.1.1.4.1.5
+      key: print.pages.b4.total
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Total pages printed on B4/Legal paper
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: e06977e07b634c59b8a381461e92a6de
+      name: 'Pages by Size: B5 Total'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.6.1.1.4.1.6
+      key: print.pages.b5.total
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Total pages printed on B5 paper
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: 63494a1907a2422ba08bd511fbbc3629
+      name: 'Pages by Size: Envelope Total'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.6.1.1.4.1.7
+      key: print.pages.envelope.total
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Total pages printed on Envelope paper
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: e51952c0dee54142a35612931c6b6315
+      name: 'Pages by Size: Other Total'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.6.1.1.4.1.8
+      key: print.pages.other.total
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Total pages printed on other paper sizes
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: e36e299af1c3481c94726b8836d7c3b2
+      name: 'Pages by Size: Other Color'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.6.1.1.5.1.8
+      key: print.pages.other.color
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Color pages printed on other paper sizes
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: 9892b656b41a437a963a5e46591e6894
+      name: 'Pages: 2-Sided (Duplex)'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.27.1.1.30.1.1
+      key: print.pages.duplex
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Total duplex (2-sided) pages printed
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: ec207f6e2fa349cda6a2e167cf855ecc
+      name: 'Pages by Function: Computer/Mobile Total'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.27.6.1.4.1.1.1
+      key: print.pages.computer.total
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Total pages printed from Computer or Mobile Device
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: 85a0d6a9f422410f83f74e511b3be446
+      name: 'Pages by Function: Computer/Mobile Color'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.27.6.1.5.1.1.1
+      key: print.pages.computer.color
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Color pages printed from Computer or Mobile Device
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: 582132cf140d4df9a9c4e6398a083572
+      name: 'Pages by Function: Memory/Other Total'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.27.6.1.4.1.1.2
+      key: print.pages.memory.total
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Total pages printed from Memory Device or Other Functions
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: 6d4ce487b5c345fbb5d459de3c522cc5
+      name: 'Pages by Function: Memory/Other Color'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.27.6.1.5.1.1.2
+      key: print.pages.memory.color
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Color pages printed from Memory Device or Other Functions
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: 3c6ce47bda5d458390774fc423af73f0
+      name: 'Pages by Language: ESC/P-R'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.49.2.1.5.1.1
+      key: print.pages.lang.escp
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Total pages printed using ESC/P-R print language
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: 3ade4bfca16b408cab0844edd9dbea55
+      name: 'Pages by Language: Other'
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.49.2.1.5.1.2
+      key: print.pages.lang.other
+      delay: 5m
+      history: 365d
+      trends: 730d
+      description: Total pages printed using other print languages
+      tags:
+      - tag: component
+        value: counters
+      units: pages
+    - uuid: 480a63a0b41441d880a57ff54c10c5f9
+      name: First Printing Date
+      type: SNMP_AGENT
+      snmp_oid: 1.3.6.1.4.1.1248.1.2.2.27.1.1.13.1.1
+      key: print.first.date
+      delay: 1h
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: 'Date of first print job. Raw: 8-byte hex (year 2B, month 1B, day 1B)'
+      tags:
+      - tag: component
+        value: counters
+      preprocessing:
+      - type: JAVASCRIPT
+        parameters:
+        - 'var b = value.trim().split('' '');
+
+          var year  = (parseInt(b[0],16)<<8) | parseInt(b[1],16);
+
+          var month = parseInt(b[2],16);
+
+          var day   = parseInt(b[3],16);
+
+          return year + ''-'' + (''0''+month).slice(-2) + ''-'' + (''0''+day).slice(-2);'
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+    - uuid: 64a5598740d148ddbdf956cbd05ced02
+      name: 'Pages by Size: A4 B&W'
+      type: CALCULATED
+      key: print.pages.a4.bw
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      params: last(//print.pages.a4.total)-last(//print.pages.a4.color)
+      description: 'B&W pages printed on A4 (computed: total - color)'
+      tags:
+      - tag: component
+        value: counters
+    - uuid: 1d95feee8ee24ad3978dcf8f830ae3a6
+      name: 'Pages: 1-Sided (Simplex)'
+      type: CALCULATED
+      key: print.pages.simplex
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      params: last(//print.pages.total)-last(//print.pages.duplex)
+      description: 'Simplex (1-sided) pages (computed: total - duplex)'
+      tags:
+      - tag: component
+        value: counters
+    - uuid: 0b80fe6ae79b4feab52a1ce84b5cb3c2
+      name: 'Pages by Function: Computer/Mobile B&W'
+      type: CALCULATED
+      key: print.pages.computer.bw
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      params: last(//print.pages.computer.total)-last(//print.pages.computer.color)
+      description: 'B&W pages from Computer/Mobile (computed: total - color)'
+      tags:
+      - tag: component
+        value: counters
+    - uuid: 362e22db688c4fc9b6eb7a3dbc77a7d5
+      name: 'Pages by Function: Memory/Other B&W'
+      type: CALCULATED
+      key: print.pages.memory.bw
+      delay: 5m
+      history: 365d
+      trends: 730d
+      units: pages
+      params: last(//print.pages.memory.total)-last(//print.pages.memory.color)
+      description: 'B&W pages from Memory/Other (computed: total - color)'
+      tags:
+      - tag: component
+        value: counters
+    valuemaps:
+    - uuid: 084d1ae5501c406a921c354258d12da0
+      name: hrPrinterStatus
+      mappings:
+      - value: '1'
+        newvalue: Other
+      - value: '2'
+        newvalue: Unknown
+      - value: '3'
+        newvalue: Idle
+      - value: '4'
+        newvalue: Printing
+      - value: '5'
+        newvalue: Warmup
