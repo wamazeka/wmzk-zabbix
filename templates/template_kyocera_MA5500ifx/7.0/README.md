@@ -14,7 +14,6 @@ All counter and supply values were cross-checked against the device's built-in w
 | Model | Kyocera ECOSYS MA5500ifx (A4 mono MFU) |
 | Tested firmware | `C0V_S000.005.054` |
 | Serial number | `WDC5756001` |
-| Host | `kyocera.local` / `10.100.113.51` |
 | Template file | `zbx_template_kyocera_ma5500ifx.yaml` |
 | Zabbix version | 7.4+ |
 | SNMP version | v3 (authPriv, SHA + AES) |
@@ -22,13 +21,9 @@ All counter and supply values were cross-checked against the device's built-in w
 
 ---
 
-## SNMPv3 Configuration
+## SNMP Configuration
 
-| Parameter | Value |
-|-----------|-------|
-| Security name | `zabbixUser` |
-| Auth protocol | SHA |
-| Priv protocol | AES |
+I highly recommend using snmpv3 in production and create a custom complex context, authentication and authorization name.
 
 ---
 
