@@ -21,26 +21,9 @@ All counter values were cross-checked against the printer's built-in web interfa
 
 ---
 
-## SNMPv3 Configuration
+## SNMP Configuration
 
-| Parameter | Value |
-|-----------|-------|
-| Security name | `zabbix` |
-| Context name | `EPSONSN` |
-| Auth protocol | SHA |
-| Priv protocol | AES |
-
-> The context name `EPSONSN` is **required** for this printer. Without it, SNMP queries return no data.
-
----
-
-## Macros
-
-| Macro | Default | Description |
-|-------|---------|-------------|
-| `{$SNMP_USER}` | `zabbix` | SNMPv3 username |
-| `{$SNMP_AUTH_PASS}` | *(secret)* | Authentication password |
-| `{$SNMP_PRIV_PASS}` | *(secret)* | Privacy (encryption) password |
+I highly recommend using snmpv3 in production and create a custom complex context, authentication and authorization name.
 
 ---
 
