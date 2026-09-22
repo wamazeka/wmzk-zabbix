@@ -111,15 +111,26 @@ I highly recommend using snmpv3 in production and create a custom complex contex
 
 | Name | Item | Severity | Notes |
 |------|------|----------|-------|
-| Printer is not responding via SNMP | `printer.status` | AVERAGE | No data for 10 minutes |
-| Printer status unknown | `printer.status` | WARNING | hrPrinterStatus = other(1) or unknown(2) |
-| Printer error: `{ITEM.LASTVALUE}` | `printer.error.state` | HIGH | Error bitmap is non-zero; manual close |
-| Printer has been restarted (uptime < 10 min) | `printer.uptime` | WARNING | Manual close |
-| Firmware version changed | `printer.firmware` | INFO | Manual close |
-| MAC address changed | `net.if.mac` | HIGH | Unexpected hardware change; manual close |
-| IP address changed | `net.if.ip` | WARNING | Manual close |
+| EPSON: Printer is not responding via SNMP | `printer.status` | AVERAGE | No data for 10 minutes |
+| EPSON: Printer status is unknown | `printer.status` | WARNING | hrPrinterStatus = other(1) or unknown(2) |
+| EPSON: Printer error | `printer.error.state` | HIGH | Error bitmap is non-zero; manual close |
+| EPSON: Printer has been restarted (uptime < 10 min) | `printer.uptime` | WARNING | Manual close |
+| EPSON: Firmware version has changed | `printer.firmware` | INFO | Manual close |
+| EPSON: MAC address has changed | `net.if.mac` | HIGH | Unexpected hardware change; manual close |
+| EPSON: IP address has changed | `net.if.ip` | WARNING | Manual close |
+| EPSON: Ink channel {#SNMPINDEX} is low | `ink.channel.level.pct[{#SNMPINDEX}]` | WARNING | **LLD prototype**; ink level < `{$INK_LOW_WARN}`% |
+| EPSON: Ink channel {#SNMPINDEX} is critically low | `ink.channel.level.pct[{#SNMPINDEX}]` | HIGH | **LLD prototype**; ink level < `{$INK_LOW_CRIT}`% |
 
 ---
+
+## Template graphs and dashboards (added 2026-09)
+
+Template graphs (at the `zabbix_export` root, per the YAML export schema): `EPSON L18050: Pages printed (bw/color)`, `EPSON L18050: Pages by media/duplex`, plus an ink-level graph **prototype** per discovery-ed channel.
+
+Template dashboard `EPSON overview` - status/item-value widgets, graph widgets (pages, ink levels) and a live **Problems** widget.
+
+> 2026-09 conformance pass (official template guidelines): trigger names are static (dynamic values moved into operational data), every trigger name carries the `EPSON: ` resource prefix, the template class tag is `device`.
+
 
 ## Value Maps
 
@@ -139,6 +150,17 @@ I highly recommend using snmpv3 in production and create a custom complex contex
 | **Temperature and internal sensors** | Not exposed via SNMP on this model. |
 | **Print job queue** | Job status and queue monitoring are not supported via SNMP. |
 | **Duplex detail by paper size** | Duplex counters by paper format are present in the OID tree (`.8.1.N`) but always return 0 on this model — the L18050 does not support automatic duplex printing. |
+
+
+### Verification note (2026-09)
+
+The ink table `1.3.6.1.4.1.1248.1.8.2.14.7` was previously assessed as unreliable (identical hex on all channels). The 2026-09 ink-monitoring addition assumes an IEEE float payload per channel (`raw, 4 bytes, big-endian` -> equipment value). **One-time check on a live printer:**
+
+```bash
+snmpwalk -v3 -u <u> -l authPriv -x AES -X <pk> -a SHA -A <ak> <ip> 1.3.6.1.4.1.1248.1.8.2.14.7
+```
+
+Distinct decreasing integers per channel = feature works; a constant iceberg `00 00 EA 42` (116.75) across channels and time = ink intake hex is a capacity/max field and the ink items should be removed again.
 
 ---
 

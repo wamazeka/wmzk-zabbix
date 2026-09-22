@@ -7,13 +7,14 @@ zabbix_export:
   - uuid: b5dfb560f10b4ab0a9bbe723511bc2cd
     template: EPSON L18050 SNMPv3
     name: EPSON L18050 SNMPv3
-    description: "Monitoring template for EPSON L18050 Series inkjet printer via SNMPv3.\n\nInk levels are read from Epson\
-      \ private MIB 1.3.6.1.4.1.1248.1.8.2.14.7\nand reported individually per color (Black, Cyan, Magenta, Yellow,\nLight\
-      \ Cyan, Light Magenta) on a 0-97 scale converted to percent.\n\nRequired macros:\n  {$SNMP_USER}      - SNMPv3 username\n\
-      \  {$SNMP_AUTH_PASS} - authentication password (SHA)\n  {$SNMP_PRIV_PASS} - privacy password (AES)\n  {$SNMP_CONTEXT}\
-      \   - SNMP context name (e.g. EPSONSN)\n  {$INK_LOW_WARN}   - ink low warning threshold %, default 20\n  {$INK_LOW_CRIT}\
-      \   - ink critical threshold %, default 10\n\nTested on: EPSON L18050 Series, firmware TP31OA\nMIB vendor OID: 1.3.6.1.4.1.1248\
-      \ (Seiko Epson Corporation)\n"
+    description: "Monitoring template for EPSON L18050 Series inkjet printer via SNMPv3.\n\nInk levels\
+      \ are read from Epson private MIB 1.3.6.1.4.1.1248.1.8.2.14.7\nand reported individually per color\
+      \ (Black, Cyan, Magenta, Yellow,\nLight Cyan, Light Magenta) on a 0-97 scale converted to percent.\n\
+      \nRequired macros:\n  {$SNMP_USER}      - SNMPv3 username\n  {$SNMP_AUTH_PASS} - authentication\
+      \ password (SHA)\n  {$SNMP_PRIV_PASS} - privacy password (AES)\n  {$SNMP_CONTEXT}   - SNMP context\
+      \ name (e.g. EPSONSN)\n  {$INK_LOW_WARN}   - ink low warning threshold %, default 20\n  {$INK_LOW_CRIT}\
+      \   - ink critical threshold %, default 10\n\nTested on: EPSON L18050 Series, firmware TP31OA\n\
+      MIB vendor OID: 1.3.6.1.4.1.1248 (Seiko Epson Corporation)\n"
     groups:
     - name: Templates/Printers
     macros:
@@ -98,13 +99,14 @@ zabbix_export:
       triggers:
       - uuid: 2b07d3b7dde64cdfbfa7b6f631e81cd7
         expression: change(/EPSON L18050 SNMPv3/printer.firmware)=1
-        name: 'Firmware version changed (new: {ITEM.LASTVALUE})'
+        name: 'EPSON: Firmware version has changed'
         priority: INFO
         description: Printer firmware has been updated. Verify the new version is expected.
         manual_close: 'YES'
         tags:
         - tag: scope
           value: system
+        opdata: 'New: {ITEM.LASTVALUE}'
     - uuid: 0a47c45ee3ec473fa42921e4ad5f46cb
       name: System Uptime
       type: SNMP_AGENT
@@ -125,7 +127,7 @@ zabbix_export:
       triggers:
       - uuid: 6caa5acc573c4483b783dea8a3c91deb
         expression: last(/EPSON L18050 SNMPv3/printer.uptime)<600
-        name: Printer has been restarted (uptime < 10 min)
+        name: 'EPSON: Printer has been restarted (uptime < 10 min)'
         priority: WARNING
         description: Printer uptime is less than 10 minutes — likely rebooted recently.
         manual_close: 'YES'
@@ -153,7 +155,7 @@ zabbix_export:
       triggers:
       - uuid: cbdfea3955ec44f592e7ecbe97b31071
         expression: nodata(/EPSON L18050 SNMPv3/printer.status,10m)=1
-        name: Printer is not responding via SNMP
+        name: 'EPSON: Printer is not responding via SNMP'
         priority: AVERAGE
         description: No SNMP data received for 10 minutes. Printer may be offline or powered off.
         tags:
@@ -161,7 +163,7 @@ zabbix_export:
           value: availability
       - uuid: e5e71639e95d4b6d86012122118a7013
         expression: last(/EPSON L18050 SNMPv3/printer.status)=1 or last(/EPSON L18050 SNMPv3/printer.status)=2
-        name: Printer status unknown
+        name: 'EPSON: Printer status is unknown'
         priority: WARNING
         tags:
         - tag: scope
@@ -219,13 +221,14 @@ zabbix_export:
       triggers:
       - uuid: 2e155dce540f41ec88699fe685b30fdb
         expression: last(/EPSON L18050 SNMPv3/printer.error.state)<>"OK"
-        name: 'Printer error: {ITEM.LASTVALUE}'
+        name: 'EPSON: Printer error'
         priority: HIGH
         description: Printer reported one or more errors via hrPrinterDetectedErrorState.
         manual_close: 'YES'
         tags:
         - tag: scope
           value: availability
+        opdata: 'Error: {ITEM.LASTVALUE}'
     - uuid: c9c97172f34d450c8cd0496d35cf4547
       name: Total Pages Printed
       type: SNMP_AGENT
@@ -290,13 +293,14 @@ zabbix_export:
       triggers:
       - uuid: e7af19f42be34c02a99fc166a8ac67f1
         expression: change(/EPSON L18050 SNMPv3/net.if.mac)=1
-        name: 'MAC address changed (new: {ITEM.LASTVALUE})'
+        name: 'EPSON: MAC address has changed'
         priority: HIGH
         description: Network interface MAC address has changed unexpectedly.
         manual_close: 'YES'
         tags:
         - tag: scope
           value: security
+        opdata: 'New: {ITEM.LASTVALUE}'
     - uuid: 72074051d853471dac95ee41235ad474
       name: IP Address
       type: SNMP_AGENT
@@ -317,13 +321,14 @@ zabbix_export:
       triggers:
       - uuid: dc6db062c59c4318a8f96be73ce376e3
         expression: change(/EPSON L18050 SNMPv3/net.if.ip)=1
-        name: 'IP address changed (new: {ITEM.LASTVALUE})'
+        name: 'EPSON: IP address has changed'
         priority: WARNING
         description: Printer IP address has changed. Update DNS/DHCP records if needed.
         manual_close: 'YES'
         tags:
         - tag: scope
           value: network
+        opdata: 'New: {ITEM.LASTVALUE}'
     - uuid: 1d2f3997cfec471c9209155db0b6fa4f
       name: Total RAM
       type: SNMP_AGENT
@@ -333,7 +338,8 @@ zabbix_export:
       history: 7d
       trends: '0'
       units: B
-      description: Total physical memory installed (hrMemorySize, HOST-RESOURCES-MIB). Value in KB, converted to bytes.
+      description: Total physical memory installed (hrMemorySize, HOST-RESOURCES-MIB). Value in KB, converted
+        to bytes.
       tags:
       - tag: component
         value: system
@@ -701,24 +707,22 @@ zabbix_export:
     - uuid: 5f88bc79e8314cb4ab319bf71a5e797d
       name: Ink channels discovery
       type: SNMP_AGENT
-      snmp_oid: 'discovery[{#INK.LEVEL},1.3.6.1.4.1.1248.1.8.2.14.7]'
+      snmp_oid: discovery[{#INK.LEVEL},1.3.6.1.4.1.1248.1.8.2.14.7]
       key: epson.ink.discovery
       delay: 1h
       lifetime: 7d
       enabled_lifetime_type: DISABLE_NEVER
-      description: 'Discovers ink supply channels on the Epson private supplies
-        branch (0-97 raw scale per channel).
+      description: 'Discovers ink supply channels on the Epson private supplies branch (0-97 raw scale
+        per channel).
 
-        The channel index -> color mapping (Black, Cyan, Magenta, Yellow,
-        Light Cyan, Light Magenta) must be confirmed on the device, see the
-        template README.'
-
+        The channel index -> color mapping (Black, Cyan, Magenta, Yellow, Light Cyan, Light Magenta) must
+        be confirmed on the device, see the template README.'
       item_prototypes:
       - uuid: bfc6dc62c04d48a3bf34489120a84148
         name: 'Ink channel {#SNMPINDEX}: Level (%)'
         type: SNMP_AGENT
-        snmp_oid: '1.3.6.1.4.1.1248.1.8.2.14.7.{#SNMPINDEX}'
-        key: 'ink.pct[{#SNMPINDEX}]'
+        snmp_oid: 1.3.6.1.4.1.1248.1.8.2.14.7.{#SNMPINDEX}
+        key: ink.pct[{#SNMPINDEX}]
         delay: 1h
         history: 90d
         trends: 365d
@@ -741,21 +745,26 @@ zabbix_export:
             return Math.min(100, Math.round(v / 97 * 100));'
         trigger_prototypes:
         - uuid: 855b5b21670846deb2d3f0e466912c4f
-          expression: last(/EPSON L18050 SNMPv3/ink.pct[{#SNMPINDEX}])<={$INK_LOW_WARN} and last(/EPSON L18050 SNMPv3/ink.pct[{#SNMPINDEX}])>{$INK_LOW_CRIT}
-          name: 'Ink channel {#SNMPINDEX} low ({ITEM.LASTVALUE})'
+          expression: last(/EPSON L18050 SNMPv3/ink.pct[{#SNMPINDEX}])<={$INK_LOW_WARN} and last(/EPSON
+            L18050 SNMPv3/ink.pct[{#SNMPINDEX}])>{$INK_LOW_CRIT}
+          name: 'EPSON: Ink channel {#SNMPINDEX} is low'
           priority: WARNING
-          description: Ink level of channel {#SNMPINDEX} is below {$INK_LOW_WARN}%. Order ink bottles for this channel.
+          description: Ink level of channel {#SNMPINDEX} is below {$INK_LOW_WARN}%. Order ink bottles
+            for this channel.
           tags:
           - tag: scope
             value: capacity
+          opdata: 'Ink level: {ITEM.LASTVALUE}'
         - uuid: 1c679c2eed5c4995a4955afff5ac0f60
           expression: last(/EPSON L18050 SNMPv3/ink.pct[{#SNMPINDEX}])<={$INK_LOW_CRIT}
-          name: 'Ink channel {#SNMPINDEX} critically low ({ITEM.LASTVALUE})'
+          name: 'EPSON: Ink channel {#SNMPINDEX} is critically low'
           priority: HIGH
-          description: Ink level of channel {#SNMPINDEX} is at or below {$INK_LOW_CRIT}%. Refill immediately to avoid air entering the ink system.
+          description: Ink level of channel {#SNMPINDEX} is at or below {$INK_LOW_CRIT}%. Refill immediately
+            to avoid air entering the ink system.
           tags:
           - tag: scope
             value: capacity
+          opdata: 'Ink level: {ITEM.LASTVALUE}'
       graph_prototypes:
       - uuid: 864ca60335a44e10b933d6db4ecb0f05
         name: 'Ink channel {#SNMPINDEX}: level'
@@ -764,10 +773,10 @@ zabbix_export:
           color: 199C0D
           item:
             host: EPSON L18050 SNMPv3
-            key: 'ink.pct[{#SNMPINDEX}]'
+            key: ink.pct[{#SNMPINDEX}]
     tags:
     - tag: class
-      value: hardware
+      value: device
     - tag: target
       value: epson
     dashboards:
@@ -797,7 +806,7 @@ zabbix_export:
             value: '1'
         - type: item
           name: Pages total
-          'x': '12'
+          x: '12'
           width: '12'
           hide_header: 'YES'
           fields:
@@ -820,7 +829,7 @@ zabbix_export:
             value: '1'
         - type: item
           name: B&W pages
-          'x': '24'
+          x: '24'
           width: '12'
           hide_header: 'YES'
           fields:
@@ -843,7 +852,7 @@ zabbix_export:
             value: '1'
         - type: item
           name: Color pages
-          'x': '36'
+          x: '36'
           width: '12'
           hide_header: 'YES'
           fields:
@@ -866,7 +875,7 @@ zabbix_export:
             value: '1'
         - type: item
           name: Uptime
-          'x': '48'
+          x: '48'
           width: '12'
           hide_header: 'YES'
           fields:
@@ -886,7 +895,7 @@ zabbix_export:
             value: '1'
         - type: item
           name: IP Address
-          'x': '60'
+          x: '60'
           width: '12'
           hide_header: 'YES'
           fields:
@@ -905,7 +914,7 @@ zabbix_export:
             name: show.1
             value: '1'
         - type: graph
-          'y': '2'
+          y: '2'
           width: '36'
           height: '5'
           fields:
@@ -918,8 +927,8 @@ zabbix_export:
             name: reference
             value: AAAAE
         - type: graph
-          'x': '36'
-          'y': '2'
+          x: '36'
+          y: '2'
           width: '36'
           height: '5'
           fields:
@@ -931,6 +940,23 @@ zabbix_export:
           - type: STRING
             name: reference
             value: AAAAF
+        - type: problems
+          y: '7'
+          width: '72'
+          height: '4'
+          fields:
+          - type: STRING
+            name: reference
+            value: EPRB1
+          - type: INTEGER
+            name: show_opdata
+            value: '1'
+          - type: INTEGER
+            name: show_suppressed
+            value: '1'
+          - type: INTEGER
+            name: show_symptoms
+            value: '1'
   graphs:
   - uuid: 8adaa04a7a8e47e2b4a3f94fb85c6955
     name: Pages printed
