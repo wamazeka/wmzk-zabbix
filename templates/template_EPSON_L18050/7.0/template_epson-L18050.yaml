@@ -765,3 +765,210 @@ zabbix_export:
           item:
             host: EPSON L18050 SNMPv3
             key: 'ink.pct[{#SNMPINDEX}]'
+    tags:
+    - tag: class
+      value: hardware
+    - tag: target
+      value: epson
+    dashboards:
+    - uuid: d05255e431d143359e5a5e90f7d451d3
+      name: EPSON L18050 overview
+      pages:
+      - name: Overview
+        widgets:
+        - type: item
+          name: Printer status
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: STRING
+            name: description
+            value: Printer status
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: EPSON L18050 SNMPv3
+              key: printer.status
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+        - type: item
+          name: Pages total
+          'x': '12'
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: INTEGER
+            name: decimal_places
+            value: '0'
+          - type: STRING
+            name: description
+            value: Pages total
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: EPSON L18050 SNMPv3
+              key: print.pages.total
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+        - type: item
+          name: B&W pages
+          'x': '24'
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: INTEGER
+            name: decimal_places
+            value: '0'
+          - type: STRING
+            name: description
+            value: B&W pages
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: EPSON L18050 SNMPv3
+              key: print.pages.bw
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+        - type: item
+          name: Color pages
+          'x': '36'
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: INTEGER
+            name: decimal_places
+            value: '0'
+          - type: STRING
+            name: description
+            value: Color pages
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: EPSON L18050 SNMPv3
+              key: print.pages.color
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+        - type: item
+          name: Uptime
+          'x': '48'
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: STRING
+            name: description
+            value: Uptime
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: EPSON L18050 SNMPv3
+              key: printer.uptime
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+        - type: item
+          name: IP Address
+          'x': '60'
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: STRING
+            name: description
+            value: IP Address
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: EPSON L18050 SNMPv3
+              key: net.if.ip
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+        - type: graph
+          'y': '2'
+          width: '36'
+          height: '5'
+          fields:
+          - type: GRAPH
+            name: graphid.0
+            value:
+              host: EPSON L18050 SNMPv3
+              name: Pages printed
+          - type: STRING
+            name: reference
+            value: AAAAE
+        - type: graph
+          'x': '36'
+          'y': '2'
+          width: '36'
+          height: '5'
+          fields:
+          - type: GRAPH
+            name: graphid.0
+            value:
+              host: EPSON L18050 SNMPv3
+              name: Pages by media and duplex
+          - type: STRING
+            name: reference
+            value: AAAAF
+  graphs:
+  - uuid: 8adaa04a7a8e47e2b4a3f94fb85c6955
+    name: Pages printed
+    graph_items:
+    - drawtype: BOLD_LINE
+      color: 199C0D
+      item:
+        host: EPSON L18050 SNMPv3
+        key: print.pages.total
+    - sortorder: '1'
+      color: 2774A4
+      item:
+        host: EPSON L18050 SNMPv3
+        key: print.pages.bw
+    - sortorder: '2'
+      color: F63100
+      item:
+        host: EPSON L18050 SNMPv3
+        key: print.pages.color
+  - uuid: 48044d0032f9465d8fe2f362aa52028e
+    name: Pages by media and duplex
+    graph_items:
+    - color: A54F10
+      item:
+        host: EPSON L18050 SNMPv3
+        key: print.pages.a4.total
+    - sortorder: '1'
+      color: FC6EA3
+      item:
+        host: EPSON L18050 SNMPv3
+        key: print.pages.a3.total
+    - sortorder: '2'
+      color: 6C59DC
+      item:
+        host: EPSON L18050 SNMPv3
+        key: print.pages.duplex
+    - sortorder: '3'
+      color: 7F721F
+      item:
+        host: EPSON L18050 SNMPv3
+        key: print.pages.simplex
