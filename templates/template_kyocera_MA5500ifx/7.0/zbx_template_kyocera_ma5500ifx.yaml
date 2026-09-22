@@ -448,9 +448,19 @@ zabbix_export:
         - 6h
       triggers:
       - uuid: 516dcece0e5d4ef9a008af84897abc43
-        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/imaging.unit.status)<>"OK"
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/imaging.unit.status)<>"OK" and last(/Kyocera ECOSYS MA5500ifx SNMPv3/imaging.unit.status)<>"Replace"
         name: Imaging unit requires attention ({ITEM.LASTVALUE})
         priority: WARNING
+        description: Imaging unit is not OK but has not reached the end of life yet.
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: capacity
+      - uuid: f61427d3b29f48bc894430c807983e3e
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/imaging.unit.status)="Replace"
+        name: Imaging unit must be replaced
+        priority: HIGH
+        description: Imaging unit reported the "Replace" state. Replace the unit to continue printing.
         manual_close: 'YES'
         tags:
         - tag: scope
@@ -487,6 +497,25 @@ zabbix_export:
       - type: DISCARD_UNCHANGED_HEARTBEAT
         parameters:
         - 6h
+      triggers:
+      - uuid: dd37c17deb044efdb16d4478e87e8453
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/doc.processor.status)<>"OK" and last(/Kyocera ECOSYS MA5500ifx SNMPv3/doc.processor.status)<>"Replace"
+        name: Document processor requires attention ({ITEM.LASTVALUE})
+        priority: WARNING
+        description: Document processor (ADF) is not OK but has not reached the end of life yet.
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: capacity
+      - uuid: 80b564f9b4c2478a864036a4e34c10c2
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/doc.processor.status)="Replace"
+        name: Document processor must be replaced
+        priority: HIGH
+        description: Document processor (ADF) reported the "Replace" state. Replace the unit to restore scanning/copying.
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: capacity
     - uuid: bc71b2490ba04a8aa71750722bdb25ba
       name: 'Paper: Cassette 1 Level (raw)'
       type: SNMP_AGENT
