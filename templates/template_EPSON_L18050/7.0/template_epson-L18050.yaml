@@ -697,3 +697,71 @@ zabbix_export:
         newvalue: Printing
       - value: '5'
         newvalue: Warmup
+    discovery_rules:
+    - uuid: 5f88bc79e8314cb4ab319bf71a5e797d
+      name: Ink channels discovery
+      type: SNMP_AGENT
+      snmp_oid: 'discovery[{#INK.LEVEL},1.3.6.1.4.1.1248.1.8.2.14.7]'
+      key: epson.ink.discovery
+      delay: 1h
+      lifetime: 7d
+      enabled_lifetime_type: DISABLE_NEVER
+      description: 'Discovers ink supply channels on the Epson private supplies
+        branch (0-97 raw scale per channel).
+
+        The channel index -> color mapping (Black, Cyan, Magenta, Yellow,
+        Light Cyan, Light Magenta) must be confirmed on the device, see the
+        template README.'
+
+      item_prototypes:
+      - uuid: bfc6dc62c04d48a3bf34489120a84148
+        name: 'Ink channel {#SNMPINDEX}: Level (%)'
+        type: SNMP_AGENT
+        snmp_oid: '1.3.6.1.4.1.1248.1.8.2.14.7.{#SNMPINDEX}'
+        key: 'ink.pct[{#SNMPINDEX}]'
+        delay: 1h
+        history: 90d
+        trends: 365d
+        units: '%'
+        description: 'Ink level of channel {#SNMPINDEX} in percent.
+
+          Epson raw scale is 0-97, converted as round(v/97*100).
+
+          '
+        tags:
+        - tag: component
+          value: ink
+        preprocessing:
+        - type: JAVASCRIPT
+          parameters:
+          - 'var v = parseFloat(value);
+
+            if (isNaN(v) || v < 0) return 0;
+
+            return Math.min(100, Math.round(v / 97 * 100));'
+        trigger_prototypes:
+        - uuid: 855b5b21670846deb2d3f0e466912c4f
+          expression: last(/EPSON L18050 SNMPv3/ink.pct[{#SNMPINDEX}])<={$INK_LOW_WARN} and last(/EPSON L18050 SNMPv3/ink.pct[{#SNMPINDEX}])>{$INK_LOW_CRIT}
+          name: 'Ink channel {#SNMPINDEX} low ({ITEM.LASTVALUE})'
+          priority: WARNING
+          description: Ink level of channel {#SNMPINDEX} is below {$INK_LOW_WARN}%. Order ink bottles for this channel.
+          tags:
+          - tag: scope
+            value: capacity
+        - uuid: 1c679c2eed5c4995a4955afff5ac0f60
+          expression: last(/EPSON L18050 SNMPv3/ink.pct[{#SNMPINDEX}])<={$INK_LOW_CRIT}
+          name: 'Ink channel {#SNMPINDEX} critically low ({ITEM.LASTVALUE})'
+          priority: HIGH
+          description: Ink level of channel {#SNMPINDEX} is at or below {$INK_LOW_CRIT}%. Refill immediately to avoid air entering the ink system.
+          tags:
+          - tag: scope
+            value: capacity
+      graph_prototypes:
+      - uuid: 864ca60335a44e10b933d6db4ecb0f05
+        name: 'Ink channel {#SNMPINDEX}: level'
+        graph_items:
+        - drawtype: BOLD_LINE
+          color: 199C0D
+          item:
+            host: EPSON L18050 SNMPv3
+            key: 'ink.pct[{#SNMPINDEX}]'
