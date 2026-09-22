@@ -1,0 +1,1107 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+  - uuid: 1175680dd12647d58bb564ce4cbbcad7
+    name: Templates/Printers
+  templates:
+  - uuid: 8966e5a6a1be488abeee827981fa74d1
+    template: Klipper by HTTP
+    name: Klipper by HTTP
+    description: 'Monitoring of a Klipper/Moonraker 3D printer over the Moonraker REST API, using only
+      native Zabbix mechanisms: HTTP agent master items (storage period 0) + dependent items with JSONPath
+      preprocessing. No external scripts, no agents on the printer, no SNMP.
+
+
+      Item URLs are formed from the built-in {HOST.IP} macro and the {$MOONRAKER.PORT} macro (default
+      7125): create the host with the printer IP in its agent interface (the interface itself is not used).
+
+
+      Master items: /printer/objects/query?{$MOONRAKER.OBJECTS} (every {$MOONRAKER.INTERVAL}), /machine/system_stats
+      (5m), /printer/info (1h).
+
+
+      API docs: https://moonraker.readthedocs.io/en/latest/web_api/'
+    groups:
+    - name: Templates/Printers
+    macros:
+    - macro: '{$MOONRAKER.PORT}'
+      value: '7125'
+      description: Moonraker API port. Change only if your installation differs.
+    - macro: '{$MOONRAKER.OBJECTS}'
+      value: webhooks&print_stats&toolhead&extruder&heater_bed&display_status&fan&gcode_move
+      description: Object list for the single objects/query call. Tune to your config (e.g. add heater_fan,
+        or drop objects your Klipper does not define).
+    - macro: '{$MOONRAKER.INTERVAL}'
+      value: 1m
+      description: Objects query polling interval.
+    - macro: '{$MOONRAKER.HTTP_TIMEOUT}'
+      value: 15s
+      description: HTTP request timeout.
+    - macro: '{$MOONRAKER.NODATA}'
+      value: 5m
+      description: Alert when nothing arrived for this long.
+    - macro: '{$MOONRAKER.PAUSE_SLOTS}'
+      value: '10'
+      description: Consecutive paused polls before a long-pause warning (at {$MOONRAKER.INTERVAL}).
+    - macro: '{$KLIPPER.NOZZLE.TARGET_MIN}'
+      value: '150'
+      description: Min hotend target to arm the heating-stall check (°C).
+    - macro: '{$KLIPPER.NOZZLE.DELTA}'
+      value: '15'
+      description: Allowed shortfall below target before heating stall fires (°C).
+    - macro: '{$KLIPPER.NOZZLE.HEAT_T}'
+      value: 5m
+      description: Window in which the hotend must nearly reach target.
+    - macro: '{$KLIPPER.NOZZLE.MAX}'
+      value: '300'
+      description: Absolute hotend temp ceiling (°C).
+    - macro: '{$KLIPPER.BED.TARGET_MIN}'
+      value: '40'
+      description: Min bed target to arm the heating-stall check (°C).
+    - macro: '{$KLIPPER.BED.DELTA}'
+      value: '10'
+      description: Bed temp shortfall tolerated (°C).
+    - macro: '{$KLIPPER.BED.HEAT_T}'
+      value: 10m
+      description: Window in which the bed must nearly reach target.
+    - macro: '{$KLIPPER.BED.MAX}'
+      value: '120'
+      description: Absolute bed temp ceiling (°C).
+    - macro: '{$KLIPPER.HOST_TEMP.WARN}'
+      value: '80'
+      description: Host CPU warning temperature (°C).
+    - macro: '{$KLIPPER.HOST_TEMP.CRIT}'
+      value: '90'
+      description: Host CPU critical temperature (°C).
+    items:
+    - uuid: 1702f6dce58e47f4b8b21108356f3bd8
+      name: 'Klipper: Get printer objects'
+      type: HTTP_AGENT
+      key: klipper.printer_objects.get
+      delay: '{$MOONRAKER.INTERVAL}'
+      history: '0'
+      value_type: TEXT
+      description: Single JSON query of printer objects ({$MOONRAKER.OBJECTS}). Dependent items extract
+        scalars natively via JSONPath.
+      url: http://{HOST.IP}:{$MOONRAKER.PORT}/printer/objects/query?{$MOONRAKER.OBJECTS}
+      output_format: JSON
+      status_codes: '200'
+      timeout: '{$MOONRAKER.HTTP_TIMEOUT}'
+      tags:
+      - tag: component
+        value: raw
+    - uuid: 45dbcfd3a3194051be72b4857911c9f8
+      name: 'Klipper: Get host stats'
+      type: HTTP_AGENT
+      key: klipper.host_stats.get
+      delay: 5m
+      history: '0'
+      value_type: TEXT
+      description: 'Moonraker host process statistics: CPU temperature, system memory and uptime. Endpoint
+        /machine/proc_stats (formerly /machine/system_stats in older Moonraker).'
+      url: http://{HOST.IP}:{$MOONRAKER.PORT}/machine/proc_stats
+      output_format: JSON
+      status_codes: '200'
+      timeout: '{$MOONRAKER.HTTP_TIMEOUT}'
+      tags:
+      - tag: component
+        value: raw
+    - uuid: a1d3a9c974c7424b9e39db7f8da97bfa
+      name: 'Klipper: Get printer info'
+      type: HTTP_AGENT
+      key: klipper.printer_info.get
+      delay: 1h
+      history: '0'
+      value_type: TEXT
+      description: Printer meta information (Klipper firmware version, hostname).
+      url: http://{HOST.IP}:{$MOONRAKER.PORT}/printer/info
+      output_format: JSON
+      status_codes: '200'
+      timeout: '{$MOONRAKER.HTTP_TIMEOUT}'
+      tags:
+      - tag: component
+        value: raw
+    - uuid: 9ff3952ff23a4c19904c6d52c42b0e51
+      name: 'Klipper: Service state'
+      type: DEPENDENT
+      key: klipper.webhooks.state
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: 'Moonraker webhooks state: starting / ready / shutdown / error.'
+      tags:
+      - tag: component
+        value: status
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.webhooks.state
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1h
+      master_item:
+        key: klipper.printer_objects.get
+      triggers:
+      - uuid: 9a6a645e04684481b6327a516ad89f8d
+        name: 'Klipper: Service is in error state'
+        priority: HIGH
+        expression: last(/Klipper by HTTP/klipper.webhooks.state)="error"
+        description: Klipper reported the error state via Moonraker webhooks. Check klippy.log.
+        manual_close: 'YES'
+        event_name: 'Klipper: Service is in error state (see klippy.log)'
+        tags:
+        - tag: scope
+          value: availability
+      - uuid: 141e0dd270ae4723932930051ca7ae29
+        name: 'Klipper: Service is in shutdown state'
+        priority: HIGH
+        expression: last(/Klipper by HTTP/klipper.webhooks.state)="shutdown"
+        description: Klipper firmware is in shutdown (firmware restart required).
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: availability
+      - uuid: 7bf8e5512a8343f9bae4f4aeeb1a13bc
+        name: 'Klipper: No data from Moonraker API'
+        priority: AVERAGE
+        expression: nodata(/Klipper by HTTP/klipper.webhooks.state,{$MOONRAKER.NODATA})=1
+        description: Nothing arrived from the Moonraker API for {$MOONRAKER.NODATA}. Printer may be off
+          or a network issue.
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: d5341e7d5caa4b20995cbd3a7ac1edd5
+      name: 'Klipper: Service state message'
+      type: DEPENDENT
+      key: klipper.webhooks.message
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: Human-readable klipper state message (e.g. "Printer is ready", MCU error details).
+      tags:
+      - tag: component
+        value: status
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.webhooks.state_message
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1h
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: c52fa87efabb456685a7e324c7cb8456
+      name: 'Klipper: Print state'
+      type: DEPENDENT
+      key: klipper.print.state
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: 'print_stats.state: standby/printing/paused/complete/cancelled/error.'
+      tags:
+      - tag: component
+        value: print
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.print_stats.state
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 30m
+      master_item:
+        key: klipper.printer_objects.get
+      triggers:
+      - uuid: 6813ae2387514221b54147e98f08111a
+        name: 'Klipper: Print failed'
+        priority: HIGH
+        expression: last(/Klipper by HTTP/klipper.print.state)="error"
+        description: print_stats moved to the error state - the current job failed.
+        manual_close: 'YES'
+        opdata: 'State: {ITEM.LASTVALUE}'
+        tags:
+        - tag: scope
+          value: availability
+      - uuid: 92662558ddfd4fe5989e861a15217d86
+        name: 'Klipper: Print has been paused for a long time'
+        priority: WARNING
+        expression: last(/Klipper by HTTP/klipper.print.state)="paused" and count(/Klipper by HTTP/klipper.print.state,#{$MOONRAKER.PAUSE_SLOTS},"eq","paused")={$MOONRAKER.PAUSE_SLOTS}
+        description: State stayed "paused" for {$MOONRAKER.PAUSE_SLOTS} consecutive polls ({$MOONRAKER.INTERVAL}
+          each).
+        tags:
+        - tag: scope
+          value: availability
+      - uuid: 305e5ac419b74e26a96adbce24b17809
+        name: 'Klipper: Print has finished'
+        priority: INFO
+        expression: last(/Klipper by HTTP/klipper.print.state)="complete" and last(/Klipper by HTTP/klipper.print.state,#2)<>"complete"
+        description: Job completed successfully on the latest state change. Manual close after collecting
+          the part.
+        manual_close: 'YES'
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: 9869279fcd89470a88aa58c440f67843
+      name: 'Klipper: Print filename'
+      type: DEPENDENT
+      key: klipper.print.filename
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: Name of the currently loaded g-code file.
+      tags:
+      - tag: component
+        value: print
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.print_stats.filename
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 6h
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: 9dd5a959b60b4c56873d35f270c86b18
+      name: 'Klipper: Print job message'
+      type: DEPENDENT
+      key: klipper.print.message
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: print_stats.message (error details when the job fails).
+      tags:
+      - tag: component
+        value: print
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.print_stats.message
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 6h
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: f548ace6f35e41f98b4031be54e6ee0a
+      name: 'Klipper: Print active duration'
+      type: DEPENDENT
+      key: klipper.print.duration.active
+      history: 30d
+      trends: 365d
+      units: s
+      description: Time effectively spent printing the current job (print_duration).
+      tags:
+      - tag: component
+        value: counters
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.print_stats.print_duration
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: e04300a914c848d2aa0c81ed0a26e2b5
+      name: 'Klipper: Print total duration'
+      type: DEPENDENT
+      key: klipper.print.duration.total
+      history: 30d
+      trends: 365d
+      units: s
+      description: Estimated total duration of the current job (total_duration).
+      tags:
+      - tag: component
+        value: counters
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.print_stats.total_duration
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: e37ca20a31394113a8c3c1d176d4ddb0
+      name: 'Klipper: Current layer'
+      type: DEPENDENT
+      key: klipper.print.layer.current
+      history: 30d
+      trends: 365d
+      description: Current layer from slicer metadata (unsupported while idle).
+      tags:
+      - tag: component
+        value: print
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.print_stats.info.current_layer
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: 4e7869f6b1e54fb68aca764fe2932f1e
+      name: 'Klipper: Total layers'
+      type: DEPENDENT
+      key: klipper.print.layer.total
+      history: 30d
+      trends: 365d
+      description: Total layer count from slicer metadata (unsupported while idle).
+      tags:
+      - tag: component
+        value: print
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.print_stats.info.total_layer
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: 1f2dc0bcd30242738a4298efe989dc73
+      name: 'Klipper: Filament used (job)'
+      type: DEPENDENT
+      key: klipper.filament.used
+      history: 30d
+      trends: 365d
+      units: m
+      description: Filament extruded for the current job (mm -> m).
+      tags:
+      - tag: component
+        value: counters
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.print_stats.filament_used
+      - type: MULTIPLIER
+        parameters:
+        - '0.001'
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: 1343a33c74e041068d81f1dad993af7c
+      name: 'Klipper: Toolhead X position'
+      type: DEPENDENT
+      key: klipper.toolhead.x
+      history: 30d
+      trends: 365d
+      units: mm
+      description: Toolhead X coordinate (toolhead.position[0]).
+      tags:
+      - tag: component
+        value: motion
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.toolhead.position[0]
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: 59ca60f28cf94e8c9c82a83426b5fc84
+      name: 'Klipper: Toolhead Y position'
+      type: DEPENDENT
+      key: klipper.toolhead.y
+      history: 30d
+      trends: 365d
+      units: mm
+      description: Toolhead Y coordinate (toolhead.position[1]).
+      tags:
+      - tag: component
+        value: motion
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.toolhead.position[1]
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: 01f40f0f51644b81993def59be07de2c
+      name: 'Klipper: Toolhead Z position'
+      type: DEPENDENT
+      key: klipper.toolhead.z
+      history: 30d
+      trends: 365d
+      units: mm
+      description: Toolhead Z coordinate (toolhead.position[2]).
+      tags:
+      - tag: component
+        value: motion
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.toolhead.position[2]
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: de6cec96a77047d080e4c1d432df5417
+      name: 'Klipper: Toolhead max velocity'
+      type: DEPENDENT
+      key: klipper.toolhead.max_velocity
+      history: 30d
+      trends: 365d
+      units: mm/s
+      description: Configured max_velocity.
+      tags:
+      - tag: component
+        value: motion
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.toolhead.max_velocity
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: ea2a5115f91e48a69a5ed46936497848
+      name: 'Klipper: Toolhead max acceleration'
+      type: DEPENDENT
+      key: klipper.toolhead.max_accel
+      history: 30d
+      trends: 365d
+      units: mm/s2
+      description: Configured max_accel.
+      tags:
+      - tag: component
+        value: motion
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.toolhead.max_accel
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: 22246213cb0b458d9381e9b3560c79c3
+      name: 'Klipper: Active g-code speed'
+      type: DEPENDENT
+      key: klipper.gcode.speed
+      history: 30d
+      trends: 365d
+      units: mm/s
+      description: Current active g-code speed (gcode_move.speed). Unsupported if [gcode_move] is missing
+        from the host config.
+      tags:
+      - tag: component
+        value: motion
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.gcode_move.speed
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: 4b4b5773e6dc425f84670bda55e70138
+      name: 'Klipper: Speed factor, in %'
+      type: DEPENDENT
+      key: klipper.gcode.speed_factor
+      history: 30d
+      trends: 365d
+      units: '%'
+      description: Speed multiplier set via M220 (100% = normal).
+      tags:
+      - tag: component
+        value: motion
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.gcode_move.speed_factor
+      - type: MULTIPLIER
+        parameters:
+        - '100'
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: c705e2b25d4643f68090194aef0c23bc
+      name: 'Klipper: Nozzle temperature'
+      type: DEPENDENT
+      key: klipper.extruder.temp
+      history: 30d
+      trends: 365d
+      units: °C
+      description: Hotend temperature.
+      tags:
+      - tag: component
+        value: temperature
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.extruder.temperature
+      master_item:
+        key: klipper.printer_objects.get
+      triggers:
+      - uuid: 87d0425f3c0a4889914bbc870eb7f97f
+        name: 'Klipper: Nozzle is overheating'
+        priority: AVERAGE
+        expression: last(/Klipper by HTTP/klipper.extruder.temp)>{$KLIPPER.NOZZLE.MAX}
+        description: Nozzle temperature exceeded {$KLIPPER.NOZZLE.MAX}°C - possible thermal runaway.
+        event_name: 'Klipper: Nozzle is overheating ({ITEM.VALUE})'
+        tags:
+        - tag: scope
+          value: availability
+      - uuid: 6e5d43dc43d94409b887f62030c84853
+        name: 'Klipper: Nozzle fails to reach target (heating stalled)'
+        priority: WARNING
+        expression: last(/Klipper by HTTP/klipper.extruder.target)>={$KLIPPER.NOZZLE.TARGET_MIN} and max(/Klipper
+          by HTTP/klipper.extruder.temp,{$KLIPPER.NOZZLE.HEAT_T})<last(/Klipper by HTTP/klipper.extruder.target)-{$KLIPPER.NOZZLE.DELTA}
+        description: Target >= {$KLIPPER.NOZZLE.TARGET_MIN}°C but temperature stayed below target-{$KLIPPER.NOZZLE.DELTA}°C
+          for the whole {$KLIPPER.NOZZLE.HEAT_T} window - broken heater/thermistor or jammed fan.
+        opdata: 'Target: {ITEM.LASTVALUE1}, actual: {ITEM.LASTVALUE2}'
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: b399dab70ae24f01ad5d4358bb5db3d2
+      name: 'Klipper: Nozzle target temperature'
+      type: DEPENDENT
+      key: klipper.extruder.target
+      history: 30d
+      trends: 365d
+      units: °C
+      description: Hotend target temperature.
+      tags:
+      - tag: component
+        value: temperature
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.extruder.target
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1h
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: 106604dbb9a94e3d9667dc01fb78b19d
+      name: 'Klipper: Nozzle heater power, in %'
+      type: DEPENDENT
+      key: klipper.extruder.power
+      history: 30d
+      trends: 365d
+      units: '%'
+      description: PWM duty of the hotend heater (power 0-1 -> %).
+      tags:
+      - tag: component
+        value: temperature
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.extruder.power
+      - type: MULTIPLIER
+        parameters:
+        - '100'
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: 7be34db4b7b9492ba8626433a925bb86
+      name: 'Klipper: Bed temperature'
+      type: DEPENDENT
+      key: klipper.bed.temp
+      history: 30d
+      trends: 365d
+      units: °C
+      description: Heated bed temperature.
+      tags:
+      - tag: component
+        value: temperature
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.heater_bed.temperature
+      master_item:
+        key: klipper.printer_objects.get
+      triggers:
+      - uuid: 7b0d49af1b0c447fa647b3b500a289fa
+        name: 'Klipper: Bed is overheating'
+        priority: AVERAGE
+        expression: last(/Klipper by HTTP/klipper.bed.temp)>{$KLIPPER.BED.MAX}
+        description: Bed temperature exceeded {$KLIPPER.BED.MAX}°C.
+        event_name: 'Klipper: Bed is overheating ({ITEM.VALUE})'
+        tags:
+        - tag: scope
+          value: availability
+      - uuid: 62ff32c1b17642d0be7cbee2b74d4a78
+        name: 'Klipper: Bed fails to reach target (heating stalled)'
+        priority: WARNING
+        expression: last(/Klipper by HTTP/klipper.bed.target)>={$KLIPPER.BED.TARGET_MIN} and max(/Klipper
+          by HTTP/klipper.bed.temp,{$KLIPPER.BED.HEAT_T})<last(/Klipper by HTTP/klipper.bed.target)-{$KLIPPER.BED.DELTA}
+        description: Bed target >= {$KLIPPER.BED.TARGET_MIN}°C but temperature stayed below target-{$KLIPPER.BED.DELTA}°C
+          for the whole {$KLIPPER.BED.HEAT_T} window.
+        opdata: 'Target: {ITEM.LASTVALUE1}, actual: {ITEM.LASTVALUE2}'
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: b62ec9b0df1c4fa0ad41fa5bc098b6fe
+      name: 'Klipper: Bed target temperature'
+      type: DEPENDENT
+      key: klipper.bed.target
+      history: 30d
+      trends: 365d
+      units: °C
+      description: Heated bed target temperature.
+      tags:
+      - tag: component
+        value: temperature
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.heater_bed.target
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1h
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: f3b476d5cc414a89a7cc3161b3331633
+      name: 'Klipper: Bed heater power, in %'
+      type: DEPENDENT
+      key: klipper.bed.power
+      history: 30d
+      trends: 365d
+      units: '%'
+      description: PWM duty of the bed heater (0-1 -> %).
+      tags:
+      - tag: component
+        value: temperature
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.heater_bed.power
+      - type: MULTIPLIER
+        parameters:
+        - '100'
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: 395316e76923411886962264078b892e
+      name: 'Klipper: Part cooling fan speed, in %'
+      type: DEPENDENT
+      key: klipper.fan.speed
+      history: 30d
+      trends: 365d
+      units: '%'
+      description: Part cooling fan speed (0-1 -> %).
+      tags:
+      - tag: component
+        value: fan
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.fan.speed
+      - type: MULTIPLIER
+        parameters:
+        - '100'
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: 12e389c85fc34abaab70168035c60b09
+      name: 'Klipper: Part cooling fan tachometer'
+      type: DEPENDENT
+      key: klipper.fan.rpm
+      history: 30d
+      trends: 365d
+      units: rpm
+      description: Fan tachometer RPM (unsupported if the fan has no tach pin).
+      tags:
+      - tag: component
+        value: fan
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.fan.rpm
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: d17f4553ab484f7ab9a154b836e36fe4
+      name: 'Klipper: Print progress, in %'
+      type: DEPENDENT
+      key: klipper.print.progress
+      history: 30d
+      trends: 365d
+      units: '%'
+      description: display_status.progress 0-1 -> %.
+      tags:
+      - tag: component
+        value: print
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.display_status.progress
+      - type: MULTIPLIER
+        parameters:
+        - '100'
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: 3d2e410e577c434aafcd5e5df470dc93
+      name: 'Klipper: Display message (M117)'
+      type: DEPENDENT
+      key: klipper.print.message_ui
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: Message shown on the UI display (M117).
+      tags:
+      - tag: component
+        value: print
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.status.display_status.message
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1h
+      master_item:
+        key: klipper.printer_objects.get
+    - uuid: 5aa425d427e74014ba43930e2cfda0c2
+      name: 'Klipper: Host CPU temperature'
+      type: DEPENDENT
+      key: klipper.host.cpu_temp
+      history: 30d
+      trends: 365d
+      units: °C
+      description: Raspberry Pi / host CPU temperature. Unsupported on hosts without an onboard sensor.
+      tags:
+      - tag: component
+        value: host
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.cpu_temp
+      master_item:
+        key: klipper.host_stats.get
+      triggers:
+      - uuid: 42addc6d4c2445eabe3f080fb1c64cd0
+        name: 'Klipper: Host temperature is high'
+        priority: WARNING
+        expression: last(/Klipper by HTTP/klipper.host.cpu_temp)>{$KLIPPER.HOST_TEMP.WARN}
+        description: Moonraker host temperature above {$KLIPPER.HOST_TEMP.WARN}°C.
+        tags:
+        - tag: scope
+          value: availability
+        dependencies:
+        - name: 'Klipper: Host temperature is critically high'
+          expression: last(/Klipper by HTTP/klipper.host.cpu_temp)>{$KLIPPER.HOST_TEMP.CRIT}
+      - uuid: 999289f787ba4a0380d0936d86b2b02e
+        name: 'Klipper: Host temperature is critically high'
+        priority: HIGH
+        expression: last(/Klipper by HTTP/klipper.host.cpu_temp)>{$KLIPPER.HOST_TEMP.CRIT}
+        description: Moonraker host temperature above {$KLIPPER.HOST_TEMP.CRIT}°C - throttling likely.
+        tags:
+        - tag: scope
+          value: availability
+    - uuid: be9dec0f58f846a3a46bf0fb98400e72
+      name: 'Klipper: Host uptime'
+      type: DEPENDENT
+      key: klipper.host.uptime
+      history: 30d
+      trends: 365d
+      units: s
+      description: Host boot uptime (system_uptime, CLOCK_BOOTTIME).
+      tags:
+      - tag: component
+        value: host
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.system_uptime
+      master_item:
+        key: klipper.host_stats.get
+    - uuid: dd32e7936c27457b8c7c25fa7adc94b8
+      name: 'Klipper: Host memory total'
+      type: DEPENDENT
+      key: klipper.host.mem.total
+      history: 30d
+      trends: 365d
+      units: B
+      description: Total host RAM.
+      tags:
+      - tag: component
+        value: host
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.system_memory.total
+      master_item:
+        key: klipper.host_stats.get
+    - uuid: 94d965e0ea034312beaeeed8c74c86a2
+      name: 'Klipper: Host memory available'
+      type: DEPENDENT
+      key: klipper.host.mem.available
+      history: 30d
+      trends: 365d
+      units: B
+      description: Available host RAM.
+      tags:
+      - tag: component
+        value: host
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.system_memory.available
+      master_item:
+        key: klipper.host_stats.get
+    - uuid: 6fd9b5dd207a4bb7bf143659f4b47d29
+      name: 'Klipper: Firmware version'
+      type: DEPENDENT
+      key: klipper.klipper.version
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: Klipper firmware version string.
+      tags:
+      - tag: component
+        value: host
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.software_version
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      master_item:
+        key: klipper.printer_info.get
+    - uuid: 3930132393a548b9ae3af001a383372d
+      name: 'Klipper: Hostname'
+      type: DEPENDENT
+      key: klipper.host.hostname
+      history: 30d
+      trends: '0'
+      value_type: CHAR
+      description: Printer hostname reported by Moonraker.
+      tags:
+      - tag: component
+        value: host
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.result.hostname
+      - type: DISCARD_UNCHANGED_HEARTBEAT
+        parameters:
+        - 1d
+      master_item:
+        key: klipper.printer_info.get
+    - uuid: 746e8fc72e3d46069e4d6e8eb2e39ced
+      name: 'Klipper: Estimated remaining time'
+      type: CALCULATED
+      key: klipper.print.remaining
+      history: 30d
+      trends: 365d
+      units: s
+      params: last(//klipper.print.duration.total)-last(//klipper.print.duration.active)
+      description: 'Rough remaining time: total job duration minus time already spent.'
+      tags:
+      - tag: component
+        value: print
+    tags:
+    - tag: class
+      value: device
+    - tag: target
+      value: klipper
+    dashboards:
+    - uuid: 59c01d5bd0584998b48775a85f752b46
+      name: Klipper overview
+      pages:
+      - name: Overview
+        widgets:
+        - type: item
+          name: Print state
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: STRING
+            name: description
+            value: Print state
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: Klipper by HTTP
+              key: klipper.print.state
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+        - type: item
+          name: Progress
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: INTEGER
+            name: decimal_places
+            value: '1'
+          - type: STRING
+            name: description
+            value: Progress
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: Klipper by HTTP
+              key: klipper.print.progress
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+          x: '12'
+        - type: item
+          name: Remaining
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: STRING
+            name: description
+            value: Remaining
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: Klipper by HTTP
+              key: klipper.print.remaining
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+          x: '24'
+        - type: item
+          name: Nozzle
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: INTEGER
+            name: decimal_places
+            value: '1'
+          - type: STRING
+            name: description
+            value: Nozzle °C
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: Klipper by HTTP
+              key: klipper.extruder.temp
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+          x: '36'
+        - type: item
+          name: Bed
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: INTEGER
+            name: decimal_places
+            value: '1'
+          - type: STRING
+            name: description
+            value: Bed °C
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: Klipper by HTTP
+              key: klipper.bed.temp
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+          x: '48'
+        - type: item
+          name: Fan
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: INTEGER
+            name: decimal_places
+            value: '0'
+          - type: STRING
+            name: description
+            value: Fan %
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: Klipper by HTTP
+              key: klipper.fan.speed
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+          x: '60'
+        - type: graph
+          y: '2'
+          width: '36'
+          height: '5'
+          fields:
+          - type: GRAPH
+            name: graphid.0
+            value:
+              host: Klipper by HTTP
+              name: 'Klipper: Temperatures'
+          - type: STRING
+            name: reference
+            value: AAAAC
+        - type: graph
+          x: '36'
+          y: '2'
+          width: '36'
+          height: '5'
+          fields:
+          - type: GRAPH
+            name: graphid.0
+            value:
+              host: Klipper by HTTP
+              name: 'Klipper: Powers and fan'
+          - type: STRING
+            name: reference
+            value: AAAAD
+        - type: problems
+          y: '7'
+          width: '72'
+          height: '4'
+          fields:
+          - type: STRING
+            name: reference
+            value: AAAAP
+          - type: INTEGER
+            name: show_opdata
+            value: '1'
+          - type: INTEGER
+            name: show_suppressed
+            value: '1'
+          - type: INTEGER
+            name: show_symptoms
+            value: '1'
+  graphs:
+  - uuid: b3ae81a8c25345d7838544c808c250f1
+    name: 'Klipper: Temperatures'
+    graph_items:
+    - color: F63100
+      item:
+        host: Klipper by HTTP
+        key: klipper.extruder.temp
+      drawtype: BOLD_LINE
+    - color: A54F10
+      item:
+        host: Klipper by HTTP
+        key: klipper.extruder.target
+      sortorder: '1'
+    - color: 2774A4
+      item:
+        host: Klipper by HTTP
+        key: klipper.bed.temp
+      drawtype: BOLD_LINE
+      sortorder: '2'
+    - color: 6C59DC
+      item:
+        host: Klipper by HTTP
+        key: klipper.bed.target
+      sortorder: '3'
+  - uuid: 499e0505fa81451c9cea200f7b2ba3b9
+    name: 'Klipper: Powers and fan'
+    graph_items:
+    - color: F63100
+      item:
+        host: Klipper by HTTP
+        key: klipper.extruder.power
+    - color: 2774A4
+      item:
+        host: Klipper by HTTP
+        key: klipper.bed.power
+      sortorder: '1'
+    - color: 199C0D
+      item:
+        host: Klipper by HTTP
+        key: klipper.fan.speed
+      drawtype: BOLD_LINE
+      sortorder: '2'
+  - uuid: 87089c5095c84bd1b397fe72a74b5e6c
+    name: 'Klipper: Host temperature and memory'
+    graph_items:
+    - color: F63100
+      item:
+        host: Klipper by HTTP
+        key: klipper.host.cpu_temp
+      drawtype: BOLD_LINE
+    - color: 6C59DC
+      item:
+        host: Klipper by HTTP
+        key: klipper.host.mem.available
+      sortorder: '1'
