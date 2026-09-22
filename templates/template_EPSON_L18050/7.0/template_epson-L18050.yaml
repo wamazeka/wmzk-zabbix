@@ -697,3 +697,278 @@ zabbix_export:
         newvalue: Printing
       - value: '5'
         newvalue: Warmup
+    discovery_rules:
+    - uuid: 5f88bc79e8314cb4ab319bf71a5e797d
+      name: Ink channels discovery
+      type: SNMP_AGENT
+      snmp_oid: 'discovery[{#INK.LEVEL},1.3.6.1.4.1.1248.1.8.2.14.7]'
+      key: epson.ink.discovery
+      delay: 1h
+      lifetime: 7d
+      enabled_lifetime_type: DISABLE_NEVER
+      description: 'Discovers ink supply channels on the Epson private supplies
+        branch (0-97 raw scale per channel).
+
+        The channel index -> color mapping (Black, Cyan, Magenta, Yellow,
+        Light Cyan, Light Magenta) must be confirmed on the device, see the
+        template README.'
+
+      item_prototypes:
+      - uuid: bfc6dc62c04d48a3bf34489120a84148
+        name: 'Ink channel {#SNMPINDEX}: Level (%)'
+        type: SNMP_AGENT
+        snmp_oid: '1.3.6.1.4.1.1248.1.8.2.14.7.{#SNMPINDEX}'
+        key: 'ink.pct[{#SNMPINDEX}]'
+        delay: 1h
+        history: 90d
+        trends: 365d
+        units: '%'
+        description: 'Ink level of channel {#SNMPINDEX} in percent.
+
+          Epson raw scale is 0-97, converted as round(v/97*100).
+
+          '
+        tags:
+        - tag: component
+          value: ink
+        preprocessing:
+        - type: JAVASCRIPT
+          parameters:
+          - 'var v = parseFloat(value);
+
+            if (isNaN(v) || v < 0) return 0;
+
+            return Math.min(100, Math.round(v / 97 * 100));'
+        trigger_prototypes:
+        - uuid: 855b5b21670846deb2d3f0e466912c4f
+          expression: last(/EPSON L18050 SNMPv3/ink.pct[{#SNMPINDEX}])<={$INK_LOW_WARN} and last(/EPSON L18050 SNMPv3/ink.pct[{#SNMPINDEX}])>{$INK_LOW_CRIT}
+          name: 'Ink channel {#SNMPINDEX} low ({ITEM.LASTVALUE})'
+          priority: WARNING
+          description: Ink level of channel {#SNMPINDEX} is below {$INK_LOW_WARN}%. Order ink bottles for this channel.
+          tags:
+          - tag: scope
+            value: capacity
+        - uuid: 1c679c2eed5c4995a4955afff5ac0f60
+          expression: last(/EPSON L18050 SNMPv3/ink.pct[{#SNMPINDEX}])<={$INK_LOW_CRIT}
+          name: 'Ink channel {#SNMPINDEX} critically low ({ITEM.LASTVALUE})'
+          priority: HIGH
+          description: Ink level of channel {#SNMPINDEX} is at or below {$INK_LOW_CRIT}%. Refill immediately to avoid air entering the ink system.
+          tags:
+          - tag: scope
+            value: capacity
+      graph_prototypes:
+      - uuid: 864ca60335a44e10b933d6db4ecb0f05
+        name: 'Ink channel {#SNMPINDEX}: level'
+        graph_items:
+        - drawtype: BOLD_LINE
+          color: 199C0D
+          item:
+            host: EPSON L18050 SNMPv3
+            key: 'ink.pct[{#SNMPINDEX}]'
+    tags:
+    - tag: class
+      value: hardware
+    - tag: target
+      value: epson
+    dashboards:
+    - uuid: d05255e431d143359e5a5e90f7d451d3
+      name: EPSON L18050 overview
+      pages:
+      - name: Overview
+        widgets:
+        - type: item
+          name: Printer status
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: STRING
+            name: description
+            value: Printer status
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: EPSON L18050 SNMPv3
+              key: printer.status
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+        - type: item
+          name: Pages total
+          'x': '12'
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: INTEGER
+            name: decimal_places
+            value: '0'
+          - type: STRING
+            name: description
+            value: Pages total
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: EPSON L18050 SNMPv3
+              key: print.pages.total
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+        - type: item
+          name: B&W pages
+          'x': '24'
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: INTEGER
+            name: decimal_places
+            value: '0'
+          - type: STRING
+            name: description
+            value: B&W pages
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: EPSON L18050 SNMPv3
+              key: print.pages.bw
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+        - type: item
+          name: Color pages
+          'x': '36'
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: INTEGER
+            name: decimal_places
+            value: '0'
+          - type: STRING
+            name: description
+            value: Color pages
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: EPSON L18050 SNMPv3
+              key: print.pages.color
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+        - type: item
+          name: Uptime
+          'x': '48'
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: STRING
+            name: description
+            value: Uptime
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: EPSON L18050 SNMPv3
+              key: printer.uptime
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+        - type: item
+          name: IP Address
+          'x': '60'
+          width: '12'
+          hide_header: 'YES'
+          fields:
+          - type: STRING
+            name: description
+            value: IP Address
+          - type: ITEM
+            name: itemid.0
+            value:
+              host: EPSON L18050 SNMPv3
+              key: net.if.ip
+          - type: INTEGER
+            name: show.0
+            value: '2'
+          - type: INTEGER
+            name: show.1
+            value: '1'
+        - type: graph
+          'y': '2'
+          width: '36'
+          height: '5'
+          fields:
+          - type: GRAPH
+            name: graphid.0
+            value:
+              host: EPSON L18050 SNMPv3
+              name: Pages printed
+          - type: STRING
+            name: reference
+            value: AAAAE
+        - type: graph
+          'x': '36'
+          'y': '2'
+          width: '36'
+          height: '5'
+          fields:
+          - type: GRAPH
+            name: graphid.0
+            value:
+              host: EPSON L18050 SNMPv3
+              name: Pages by media and duplex
+          - type: STRING
+            name: reference
+            value: AAAAF
+  graphs:
+  - uuid: 8adaa04a7a8e47e2b4a3f94fb85c6955
+    name: Pages printed
+    graph_items:
+    - drawtype: BOLD_LINE
+      color: 199C0D
+      item:
+        host: EPSON L18050 SNMPv3
+        key: print.pages.total
+    - sortorder: '1'
+      color: 2774A4
+      item:
+        host: EPSON L18050 SNMPv3
+        key: print.pages.bw
+    - sortorder: '2'
+      color: F63100
+      item:
+        host: EPSON L18050 SNMPv3
+        key: print.pages.color
+  - uuid: 48044d0032f9465d8fe2f362aa52028e
+    name: Pages by media and duplex
+    graph_items:
+    - color: A54F10
+      item:
+        host: EPSON L18050 SNMPv3
+        key: print.pages.a4.total
+    - sortorder: '1'
+      color: FC6EA3
+      item:
+        host: EPSON L18050 SNMPv3
+        key: print.pages.a3.total
+    - sortorder: '2'
+      color: 6C59DC
+      item:
+        host: EPSON L18050 SNMPv3
+        key: print.pages.duplex
+    - sortorder: '3'
+      color: 7F721F
+      item:
+        host: EPSON L18050 SNMPv3
+        key: print.pages.simplex
