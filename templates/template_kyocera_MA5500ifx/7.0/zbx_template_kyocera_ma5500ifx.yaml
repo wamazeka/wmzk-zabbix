@@ -123,13 +123,14 @@ zabbix_export:
       triggers:
       - uuid: ec16afb0458e4d62a3a9eca16a7b0ba6
         expression: change(/Kyocera ECOSYS MA5500ifx SNMPv3/printer.firmware.main)=1
-        name: 'Firmware version changed (new: {ITEM.LASTVALUE})'
+        name: 'Kyocera: Firmware version has changed'
         priority: INFO
         description: Main firmware has been updated. Verify the new version is expected.
         manual_close: 'YES'
         tags:
         - tag: scope
           value: system
+        opdata: 'New: {ITEM.LASTVALUE}'
     - uuid: 4c4f540891b24baf8125d2875a783165
       name: System Uptime
       type: SNMP_AGENT
@@ -150,7 +151,7 @@ zabbix_export:
       triggers:
       - uuid: 062e177e09654a2988d9b3ddbee20b6c
         expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/printer.uptime)<600
-        name: Device has been restarted (uptime < 10 min)
+        name: 'Kyocera: Device has been restarted (uptime < 10 min)'
         priority: WARNING
         description: Device uptime is less than 10 minutes — likely rebooted recently.
         manual_close: 'YES'
@@ -177,13 +178,14 @@ zabbix_export:
       triggers:
       - uuid: e41e56f5838a44b9a63f2fc25a4a21d0
         expression: change(/Kyocera ECOSYS MA5500ifx SNMPv3/net.if.ip)=1
-        name: 'IP address changed (new: {ITEM.LASTVALUE})'
+        name: 'Kyocera: IP address has changed'
         priority: WARNING
         description: Device IP address has changed. Update DNS/DHCP records if needed.
         manual_close: 'YES'
         tags:
         - tag: scope
           value: network
+        opdata: 'New: {ITEM.LASTVALUE}'
     - uuid: ca238cb549914b30a1a5383f32165861
       name: MAC Address
       type: SNMP_AGENT
@@ -207,13 +209,14 @@ zabbix_export:
       triggers:
       - uuid: f271503c0d81405eb361be93996cadc2
         expression: change(/Kyocera ECOSYS MA5500ifx SNMPv3/net.if.mac)=1
-        name: 'MAC address changed (new: {ITEM.LASTVALUE})'
+        name: 'Kyocera: MAC address has changed'
         priority: HIGH
         description: Network interface MAC address has changed unexpectedly.
         manual_close: 'YES'
         tags:
         - tag: scope
           value: security
+        opdata: 'New: {ITEM.LASTVALUE}'
     - uuid: 4282de6e465643edb619e4c0729f4b8d
       name: Printer Status
       type: SNMP_AGENT
@@ -235,15 +238,16 @@ zabbix_export:
       triggers:
       - uuid: fda30b0bda0e44b7b99fbd2018e41e30
         expression: nodata(/Kyocera ECOSYS MA5500ifx SNMPv3/printer.status,10m)=1
-        name: Device is not responding via SNMP
+        name: 'Kyocera: Device is not responding via SNMP'
         priority: AVERAGE
         description: No SNMP data received for 10 minutes. Device may be offline or powered off.
         tags:
         - tag: scope
           value: availability
       - uuid: b73704747b564aa5a91e9f393008d472
-        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/printer.status)=1 or last(/Kyocera ECOSYS MA5500ifx SNMPv3/printer.status)=2
-        name: Printer status unknown
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/printer.status)=1 or last(/Kyocera ECOSYS MA5500ifx
+          SNMPv3/printer.status)=2
+        name: 'Kyocera: Printer status is unknown'
         priority: WARNING
         tags:
         - tag: scope
@@ -301,13 +305,14 @@ zabbix_export:
       triggers:
       - uuid: 0a308f9b346b4ba7bbf9f741346e797d
         expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/printer.error.state)<>"OK"
-        name: 'Printer error: {ITEM.LASTVALUE}'
+        name: 'Kyocera: Printer error'
         priority: HIGH
         description: Printer has reported one or more errors via hrPrinterDetectedErrorState.
         manual_close: 'YES'
         tags:
         - tag: scope
           value: availability
+        opdata: 'Error: {ITEM.LASTVALUE}'
     - uuid: e22452c980df43f1a8517476e6e84ee6
       name: 'Toner TK-3430S: Level (raw)'
       type: SNMP_AGENT
@@ -350,22 +355,24 @@ zabbix_export:
         - return Math.round(value / 10000 * 100);
       triggers:
       - uuid: 92f99b79402b458baa63f835f8766891
-        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/toner.black.pct)<={$TONER_LOW_WARN} and last(/Kyocera ECOSYS MA5500ifx
-          SNMPv3/toner.black.pct)>{$TONER_LOW_CRIT}
-        name: Toner level low ({ITEM.LASTVALUE})
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/toner.black.pct)<={$TONER_LOW_WARN} and last(/Kyocera
+          ECOSYS MA5500ifx SNMPv3/toner.black.pct)>{$TONER_LOW_CRIT}
+        name: 'Kyocera: Toner level is low'
         priority: WARNING
         description: Toner TK-3430S is below warning threshold. Order replacement toner.
         tags:
         - tag: scope
           value: capacity
+        opdata: 'Level: {ITEM.LASTVALUE}'
       - uuid: e78082592f3e43c6b8a43f6b1d991f97
         expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/toner.black.pct)<={$TONER_LOW_CRIT}
-        name: Toner critically low ({ITEM.LASTVALUE})
+        name: 'Kyocera: Toner level is critically low'
         priority: HIGH
         description: Toner TK-3430S is critically low. Replace immediately to avoid print failure.
         tags:
         - tag: scope
           value: capacity
+        opdata: 'Level: {ITEM.LASTVALUE}'
     - uuid: 8ea63122ef7241ed83c4d85d73f187df
       name: 'Waste Toner Box: Status'
       type: SNMP_AGENT
@@ -402,14 +409,16 @@ zabbix_export:
         - 6h
       triggers:
       - uuid: 91e4f19c23ec40b9b21b52412c092128
-        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/toner.waste.status)<>"OK" and last(/Kyocera ECOSYS MA5500ifx SNMPv3/toner.waste.status)<>"Unknown"
-        name: Waste toner box needs replacement ({ITEM.LASTVALUE})
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/toner.waste.status)<>"OK" and last(/Kyocera
+          ECOSYS MA5500ifx SNMPv3/toner.waste.status)<>"Unknown"
+        name: 'Kyocera: Waste toner box needs replacement'
         priority: HIGH
         description: Waste toner box is full. Replace to avoid printer lockout.
         manual_close: 'YES'
         tags:
         - tag: scope
           value: capacity
+        opdata: 'Usage: {ITEM.LASTVALUE}'
     - uuid: 98fffb54ae404e1f87f67c477f84234b
       name: 'Imaging Unit: Status'
       type: SNMP_AGENT
@@ -448,17 +457,19 @@ zabbix_export:
         - 6h
       triggers:
       - uuid: 516dcece0e5d4ef9a008af84897abc43
-        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/imaging.unit.status)<>"OK" and last(/Kyocera ECOSYS MA5500ifx SNMPv3/imaging.unit.status)<>"Replace"
-        name: Imaging unit requires attention ({ITEM.LASTVALUE})
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/imaging.unit.status)<>"OK" and last(/Kyocera
+          ECOSYS MA5500ifx SNMPv3/imaging.unit.status)<>"Replace"
+        name: 'Kyocera: Imaging unit requires attention'
         priority: WARNING
         description: Imaging unit is not OK but has not reached the end of life yet.
         manual_close: 'YES'
         tags:
         - tag: scope
           value: capacity
+        opdata: 'Status: {ITEM.LASTVALUE}'
       - uuid: f61427d3b29f48bc894430c807983e3e
         expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/imaging.unit.status)="Replace"
-        name: Imaging unit must be replaced
+        name: 'Kyocera: Imaging unit must be replaced'
         priority: HIGH
         description: Imaging unit reported the "Replace" state. Replace the unit to continue printing.
         manual_close: 'YES'
@@ -499,19 +510,22 @@ zabbix_export:
         - 6h
       triggers:
       - uuid: dd37c17deb044efdb16d4478e87e8453
-        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/doc.processor.status)<>"OK" and last(/Kyocera ECOSYS MA5500ifx SNMPv3/doc.processor.status)<>"Replace"
-        name: Document processor requires attention ({ITEM.LASTVALUE})
+        expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/doc.processor.status)<>"OK" and last(/Kyocera
+          ECOSYS MA5500ifx SNMPv3/doc.processor.status)<>"Replace"
+        name: 'Kyocera: Document processor requires attention'
         priority: WARNING
         description: Document processor (ADF) is not OK but has not reached the end of life yet.
         manual_close: 'YES'
         tags:
         - tag: scope
           value: capacity
+        opdata: 'Status: {ITEM.LASTVALUE}'
       - uuid: 80b564f9b4c2478a864036a4e34c10c2
         expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/doc.processor.status)="Replace"
-        name: Document processor must be replaced
+        name: 'Kyocera: Document processor must be replaced'
         priority: HIGH
-        description: Document processor (ADF) reported the "Replace" state. Replace the unit to restore scanning/copying.
+        description: Document processor (ADF) reported the "Replace" state. Replace the unit to restore
+          scanning/copying.
         manual_close: 'YES'
         tags:
         - tag: scope
@@ -524,8 +538,8 @@ zabbix_export:
       delay: 5m
       history: 30d
       trends: 90d
-      description: Cassette 1 current paper level in sheets (prtInputCurrentLevel, Printer MIB). Max=500. Used by dependent
-        item for % calculation.
+      description: Cassette 1 current paper level in sheets (prtInputCurrentLevel, Printer MIB). Max=500.
+        Used by dependent item for % calculation.
       tags:
       - tag: component
         value: paper
@@ -545,8 +559,8 @@ zabbix_export:
       delay: 5m
       history: 30d
       trends: 90d
-      description: MP Tray paper status (prtInputStatus). 0=paper present, 19=empty. MP Tray does not measure sheet count
-        — only presence/absence.
+      description: MP Tray paper status (prtInputStatus). 0=paper present, 19=empty. MP Tray does not
+        measure sheet count — only presence/absence.
       tags:
       - tag: component
         value: paper
@@ -575,8 +589,8 @@ zabbix_export:
       delay: 1h
       history: 7d
       trends: '0'
-      description: CPU clock frequency in MHz (Kyocera private MIB 1347.43.5.4). Value is in MHz — displayed without units
-        to avoid Zabbix SI auto-scaling.
+      description: CPU clock frequency in MHz (Kyocera private MIB 1347.43.5.4). Value is in MHz — displayed
+        without units to avoid Zabbix SI auto-scaling.
       tags:
       - tag: component
         value: system
@@ -708,7 +722,8 @@ zabbix_export:
       history: 365d
       trends: 730d
       units: pages
-      description: 'Total 2-sided (duplex) pages printed (Kyocera private MIB 1347.42.2.5). Confirmed: 50 ✅'
+      description: 'Total 2-sided (duplex) pages printed (Kyocera private MIB 1347.42.2.5). Confirmed:
+        50 ✅'
       tags:
       - tag: component
         value: counters
@@ -721,7 +736,8 @@ zabbix_export:
       history: 365d
       trends: 730d
       units: pages
-      description: 'Total 1-sided (simplex) pages printed (Kyocera private MIB 1347.42.2.5). Confirmed: 78 ✅'
+      description: 'Total 1-sided (simplex) pages printed (Kyocera private MIB 1347.42.2.5). Confirmed:
+        78 ✅'
       tags:
       - tag: component
         value: counters
@@ -783,14 +799,15 @@ zabbix_export:
       triggers:
       - uuid: 9853a25301e14a7a86ccce1c7477b22d
         expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/paper.cassette1.pct)<={$PAPER_LOW_WARN}
-        name: 'Cassette 1: paper low ({ITEM.LASTVALUE})'
+        name: 'Kyocera: Cassette 1: paper is low'
         priority: WARNING
         tags:
         - tag: scope
           value: capacity
+        opdata: 'Level: {ITEM.LASTVALUE}'
       - uuid: 558ec9c134374296b535081a11978068
         expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/paper.cassette1.pct)=0
-        name: 'Cassette 1: paper empty'
+        name: 'Kyocera: Cassette 1: paper is empty'
         priority: AVERAGE
         tags:
         - tag: scope
@@ -812,7 +829,8 @@ zabbix_export:
       delay: '0'
       history: 30d
       trends: '0'
-      description: MP Tray paper presence status. MP Tray cannot measure sheet count — only detects paper present or absent.
+      description: MP Tray paper presence status. MP Tray cannot measure sheet count — only detects paper
+        present or absent.
       tags:
       - tag: component
         value: paper
@@ -832,7 +850,7 @@ zabbix_export:
       triggers:
       - uuid: a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d
         expression: last(/Kyocera ECOSYS MA5500ifx SNMPv3/paper.mptray.status)="Empty"
-        name: 'MP Tray: no paper'
+        name: 'Kyocera: MP Tray: no paper'
         priority: INFO
         tags:
         - tag: scope
@@ -846,8 +864,8 @@ zabbix_export:
       history: 365d
       trends: 730d
       units: pages
-      description: 'Scanned pages via Other/Direct function (Kyocera scanner MIB 1347.46.10). Note: Copy scan count = Total
-        - Other - FAX.'
+      description: 'Scanned pages via Other/Direct function (Kyocera scanner MIB 1347.46.10). Note: Copy
+        scan count = Total - Other - FAX.'
       tags:
       - tag: component
         value: counters
@@ -882,7 +900,7 @@ zabbix_export:
         newvalue: No Paper
     tags:
     - tag: class
-      value: hardware
+      value: device
     - tag: target
       value: kyocera
     dashboards:
@@ -915,7 +933,7 @@ zabbix_export:
             value: '1'
         - type: item
           name: Cassette 1
-          'x': '18'
+          x: '18'
           width: '18'
           hide_header: 'YES'
           fields:
@@ -938,7 +956,7 @@ zabbix_export:
             value: '1'
         - type: item
           name: Pages total
-          'x': '36'
+          x: '36'
           width: '18'
           hide_header: 'YES'
           fields:
@@ -961,7 +979,7 @@ zabbix_export:
             value: '1'
         - type: item
           name: Scanned pages
-          'x': '54'
+          x: '54'
           width: '18'
           hide_header: 'YES'
           fields:
@@ -983,7 +1001,7 @@ zabbix_export:
             name: show.1
             value: '1'
         - type: graph
-          'y': '2'
+          y: '2'
           width: '36'
           height: '5'
           fields:
@@ -996,8 +1014,8 @@ zabbix_export:
             name: reference
             value: AAAAC
         - type: graph
-          'x': '36'
-          'y': '2'
+          x: '36'
+          y: '2'
           width: '36'
           height: '5'
           fields:
@@ -1009,6 +1027,23 @@ zabbix_export:
           - type: STRING
             name: reference
             value: AAAAD
+        - type: problems
+          y: '7'
+          width: '72'
+          height: '4'
+          fields:
+          - type: STRING
+            name: reference
+            value: KPRB1
+          - type: INTEGER
+            name: show_opdata
+            value: '1'
+          - type: INTEGER
+            name: show_suppressed
+            value: '1'
+          - type: INTEGER
+            name: show_symptoms
+            value: '1'
   graphs:
   - uuid: 42bb6c6f9122407b95fd599df2b5f0fb
     name: 'Toner: Black level'

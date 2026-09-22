@@ -147,22 +147,34 @@ Simplex/Duplex counters are sourced from `1347.42.2.5` — confirmed values: sim
 
 | Name | Item | Severity | Notes |
 |------|------|----------|-------|
-| Device is not responding via SNMP | `printer.status` | AVERAGE | No data for 10 minutes |
-| Printer status unknown | `printer.status` | WARNING | hrPrinterStatus = other(1) or unknown(2) |
-| Printer error: `{ITEM.LASTVALUE}` | `printer.error.state` | HIGH | Error bitmap non-zero; manual close |
-| Device has been restarted (uptime < 10 min) | `printer.uptime` | WARNING | Manual close |
-| Firmware version changed | `printer.firmware.main` | INFO | Manual close |
-| MAC address changed | `net.if.mac` | HIGH | Unexpected hardware change; manual close |
-| IP address changed | `net.if.ip` | WARNING | Manual close |
-| Toner level low | `toner.black.pct` | WARNING | Level ≤ `{$TONER_LOW_WARN}`% |
-| Toner critically low | `toner.black.pct` | HIGH | Level ≤ `{$TONER_LOW_CRIT}`% |
-| Waste toner box needs replacement | `toner.waste.status` | HIGH | Status ≠ "OK"; manual close |
-| Imaging unit requires attention | `imaging.unit.status` | WARNING | Status ≠ "OK"; manual close |
-| Cassette 1: paper low | `paper.cassette1.pct` | WARNING | Level ≤ `{$PAPER_LOW_WARN}`% |
-| Cassette 1: paper empty | `paper.cassette1.pct` | AVERAGE | Level = 0% |
-| MP Tray: no paper | `paper.mptray.status` | INFO | Status = "Empty" |
+| Kyocera: Device is not responding via SNMP | `printer.status` | AVERAGE | No data for 10 minutes |
+| Kyocera: Printer status is unknown | `printer.status` | WARNING | hrPrinterStatus = other(1) or unknown(2) |
+| Kyocera: Printer error | `printer.error.state` | HIGH | Error bitmap non-zero; manual close |
+| Kyocera: Device has been restarted (uptime < 10 min) | `printer.uptime` | WARNING | Manual close |
+| Kyocera: Firmware version has changed | `printer.firmware.main` | INFO | Manual close |
+| Kyocera: MAC address has changed | `net.if.mac` | HIGH | Unexpected hardware change; manual close |
+| Kyocera: IP address has changed | `net.if.ip` | WARNING | Manual close |
+| Kyocera: Toner level is low | `toner.black.pct` | WARNING | Level ≤ `{$TONER_LOW_WARN}`% |
+| Kyocera: Toner level is critically low | `toner.black.pct` | HIGH | Level ≤ `{$TONER_LOW_CRIT}`% |
+| Kyocera: Waste toner box needs replacement | `toner.waste.status` | HIGH | Status ≠ "OK"; manual close |
+| Kyocera: Imaging unit requires attention | `imaging.unit.status` | WARNING | Status ≠ "OK"; manual close |
+| Kyocera: Imaging unit must be replaced | `imaging.unit.status` | HIGH | Status contains “Replace”; requires replacement; manual close |
+| Kyocera: Cassette 1: paper is low | `paper.cassette1.pct` | WARNING | Level ≤ `{$PAPER_LOW_WARN}`% |
+| Kyocera: Cassette 1: paper is empty | `paper.cassette1.pct` | AVERAGE | Level = 0% |
+| Kyocera: MP Tray: no paper | `paper.mptray.status` | INFO | Status = "Empty" |
+| Kyocera: Document processor requires attention | `doc.processor.status` | WARNING | Status ≠ “OK” |
+| Kyocera: Document processor must be replaced | `doc.processor.status` | HIGH | Status ≠ “OK” sustained across 3 polls |
 
 ---
+
+## Template graphs and dashboards (added 2026-09)
+
+Four template graphs (at the `zabbix_export` root, per the YAML export schema): `Kyocera MA5500ifx: Toner level`, `Kyocera MA5500ifx: Paper levels`, `Kyocera MA5500ifx: Pages printed (all years)`, `Kyocera MA5500ifx: Scans`.
+
+Template dashboard `Kyocera MA5500ifx overview` - toner/paper item-value widgets, graph widgets (toner, scans) and a live **Problems** widget.
+
+> 2026-09 conformance pass (official template guidelines): trigger names are static (dynamic values moved from trigger names into operational data), every trigger name carries the `Kyocera: ` resource prefix, the template class tag is `device`, simple graphs live at the export root, dashboard `Kyocera MA5500ifx overview` ships with a Problems widget, and SNMP credential macros stay `SECRET_TEXT`.
+
 
 ## Value Maps
 
