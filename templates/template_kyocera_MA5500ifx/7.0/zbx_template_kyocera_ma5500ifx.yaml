@@ -885,53 +885,6 @@ zabbix_export:
       value: hardware
     - tag: target
       value: kyocera
-    graphs:
-    - uuid: 42bb6c6f9122407b95fd599df2b5f0fb
-      name: 'Toner: Black level'
-      graph_items:
-      - drawtype: BOLD_LINE
-        color: F63100
-        item:
-          host: Kyocera ECOSYS MA5500ifx SNMPv3
-          key: toner.black.pct
-    - uuid: d419b5bbd7d447bca8cef16473debc8f
-      name: 'Paper: Cassette 1 level'
-      graph_items:
-      - drawtype: BOLD_LINE
-        color: 199C0D
-        item:
-          host: Kyocera ECOSYS MA5500ifx SNMPv3
-          key: paper.cassette1.pct
-    - uuid: 24ab20da016d4331a9b32a28a62da730
-      name: Pages by function
-      graph_items:
-      - color: 2774A4
-        item:
-          host: Kyocera ECOSYS MA5500ifx SNMPv3
-          key: print.pages.bw.print
-      - sortorder: '1'
-        color: A54F10
-        item:
-          host: Kyocera ECOSYS MA5500ifx SNMPv3
-          key: print.pages.bw.copy
-      - sortorder: '2'
-        color: FC6EA3
-        item:
-          host: Kyocera ECOSYS MA5500ifx SNMPv3
-          key: print.pages.bw.fax
-    - uuid: f6971ae40e7d41d287eb45875ee61838
-      name: Pages and scans total
-      graph_items:
-      - drawtype: BOLD_LINE
-        color: 199C0D
-        item:
-          host: Kyocera ECOSYS MA5500ifx SNMPv3
-          key: print.pages.total
-      - sortorder: '1'
-        color: 6C59DC
-        item:
-          host: Kyocera ECOSYS MA5500ifx SNMPv3
-          key: scan.pages.total
     dashboards:
     - uuid: ec8486b3f7b14e4bab2d0ef150c37702
       name: Kyocera MA5500ifx overview
@@ -1056,3 +1009,50 @@ zabbix_export:
           - type: STRING
             name: reference
             value: AAAAD
+  graphs:
+  - uuid: 42bb6c6f9122407b95fd599df2b5f0fb
+    name: 'Toner: Black level'
+    graph_items:
+    - drawtype: BOLD_LINE
+      color: F63100
+      item:
+        host: Kyocera ECOSYS MA5500ifx SNMPv3
+        key: toner.black.pct
+  - uuid: d419b5bbd7d447bca8cef16473debc8f
+    name: 'Paper: Cassette 1 level'
+    graph_items:
+    - drawtype: BOLD_LINE
+      color: 199C0D
+      item:
+        host: Kyocera ECOSYS MA5500ifx SNMPv3
+        key: paper.cassette1.pct
+  - uuid: 24ab20da016d4331a9b32a28a62da730
+    name: Pages by function
+    graph_items:
+    - color: 2774A4
+      item:
+        host: Kyocera ECOSYS MA5500ifx SNMPv3
+        key: print.pages.bw.print
+    - sortorder: '1'
+      color: A54F10
+      item:
+        host: Kyocera ECOSYS MA5500ifx SNMPv3
+        key: print.pages.bw.copy
+    - sortorder: '2'
+      color: FC6EA3
+      item:
+        host: Kyocera ECOSYS MA5500ifx SNMPv3
+        key: print.pages.bw.fax
+  - uuid: f6971ae40e7d41d287eb45875ee61838
+    name: Pages and scans total
+    graph_items:
+    - drawtype: BOLD_LINE
+      color: 199C0D
+      item:
+        host: Kyocera ECOSYS MA5500ifx SNMPv3
+        key: print.pages.total
+    - sortorder: '1'
+      color: 6C59DC
+      item:
+        host: Kyocera ECOSYS MA5500ifx SNMPv3
+        key: scan.pages.total
